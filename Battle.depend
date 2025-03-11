@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1740906505 source:d:\c++\game\demoo\battle\main.cpp
+	<iostream>
+	<vector>
+	<SDL.h>
+
