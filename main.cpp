@@ -1,13 +1,19 @@
 #include <iostream>
 #include<vector>
 #include <SDL.h>
+#include <SDL_image.h>
 #include<algorithm>
+#include <cmath> // Thêm include này
 using namespace std;
 const int SCREEN_WIDTH=800;
 const int SCREEN_HEIGHT=600;
 const int TILE_SIZE=40;
 const int MAP_WIDTH=SCREEN_WIDTH/TILE_SIZE;
 const int MAP_HEIGHT=SCREEN_HEIGHT/TILE_SIZE;
+SDL_Texture *playerTexture;
+SDL_Texture *enemyTexture;
+SDL_Texture *bulletTexture;
+SDL_Texture *wallTexture;
 class Bullet{
 public:
     int x,y;
@@ -36,8 +42,15 @@ public:
 
     void render(SDL_Renderer* renderer) {
     if (active) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &rect);
+        //SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        //SDL_RenderFillRect(renderer, &rect);
+        double angle = atan2(dy, dx) * 180 / M_PI; // Tính góc xoay
+
+        SDL_Point center;
+        center.x = rect.w / 2;
+        center.y = rect.h / 2;
+
+        SDL_RenderCopyEx(renderer, bulletTexture, NULL, &rect, angle, NULL, SDL_FLIP_NONE);
     }
     }
     };
@@ -56,8 +69,10 @@ public:
     }
    void render(SDL_Renderer* renderer) {
     if (active) {
-        SDL_SetRenderDrawColor(renderer, 150, 75, 0, 255); // Brown color
-        SDL_RenderFillRect(renderer, &rect);
+        //SDL_SetRenderDrawColor(renderer, 150, 75, 0, 255); // Brown color
+        //SDL_RenderFillRect(renderer, &rect);
+        SDL_RenderCopy(renderer,wallTexture,NULL,&rect);
+
     }
    }
 };
@@ -81,42 +96,42 @@ public:
         active = true;
     }
     void move(const std::vector<Wall>& walls) {
-    if (--moveDelay > 0) return;
-    moveDelay = 15;
-    int r = rand() % 4;
-    if (r == 0) { // Up
-        this->dirX = 0;
-        this->dirY = -5;
-    }
-    else if (r == 1) { // Down
-        this->dirX = 0;
-        this->dirY = 5;
-    }
-    else if (r == 2) { // Left
-        this->dirY = 0;
-        this->dirX = -5;
-    }
-    else if (r == 3) { // Right
-        this->dirY = 0;
-        this->dirX = 5;
-    }
-int newX = x + this->dirX;
-int newY = y + this->dirY;
+        if (--moveDelay > 0) return;
+        moveDelay = 15;
+        int r = rand() % 4;
+        if (r == 0) { // Up
+            this->dirX = 0;
+            this->dirY = -1;
+        }
+        else if (r == 1) { // Down
+            this->dirX = 0;
+            this->dirY = 1;
+        }
+        else if (r == 2) { // Left
+            this->dirY = 0;
+            this->dirX = -1;
+        }
+        else if (r == 3) { // Right
+            this->dirY = 0;
+            this->dirX = 1;
+        }
+        int newX = x + this->dirX * 5;  // Giữ nguyên vận tốc
+        int newY = y + this->dirY * 5;  // Giữ nguyên vận tốc
 
-SDL_Rect newRect = { newX, newY, TILE_SIZE, TILE_SIZE };
-for (const auto& wall : walls) {
-    if (wall.active && SDL_HasIntersection(&newRect, &wall.rect)) {
-        return;
-    }
-}
+        SDL_Rect newRect = { newX, newY, TILE_SIZE, TILE_SIZE };
+        for (const auto& wall : walls) {
+            if (wall.active && SDL_HasIntersection(&newRect, &wall.rect)) {
+                return;
+            }
+        }
 
-if (newX >= TILE_SIZE && newX <= SCREEN_WIDTH - TILE_SIZE * 2 &&
-    newY >= TILE_SIZE && newY <= SCREEN_HEIGHT - TILE_SIZE * 2) {
-    x = newX;
-    y = newY;
-    rect.x = x;
-    rect.y = y;
-}
+        if (newX >= TILE_SIZE && newX <= SCREEN_WIDTH - TILE_SIZE * 2 &&
+            newY >= TILE_SIZE && newY <= SCREEN_HEIGHT - TILE_SIZE * 2) {
+            x = newX;
+            y = newY;
+            rect.x = x;
+            rect.y = y;
+        }
     }
 void shoot() {
     if (--shootDelay > 0) return;
@@ -134,8 +149,14 @@ void updateBullets() {
 }
 
 void render(SDL_Renderer* renderer) {
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_RenderFillRect(renderer, &rect);
+    double angle = atan2(dirY, dirX) * 180 / M_PI;
+
+    SDL_Point center;
+    center.x = rect.w / 2;
+    center.y = rect.h / 2;
+
+    SDL_RenderCopyEx(renderer, enemyTexture, NULL, &rect, angle, NULL, SDL_FLIP_NONE);
+
     for (auto &bullet : bullets) {
         bullet.render(renderer);
     }
@@ -163,7 +184,7 @@ public:
         this->dirX=dx;
         this->dirY=dy;
         SDL_Rect newRect={newX,newY,TILE_SIZE,TILE_SIZE};
-        for(int i=0;i<walls.size();i++)
+        for(std::vector<Wall>::size_type i=0;i<walls.size();i++) // Corrected loop counter type
             if(walls[i].active&&SDL_HasIntersection(&newRect,&walls[i].rect))  return;
         if(newX>=TILE_SIZE&&newY>=TILE_SIZE&&newX<=SCREEN_WIDTH-2*TILE_SIZE&&newY<=SCREEN_HEIGHT-2*TILE_SIZE)
         {
@@ -187,8 +208,13 @@ public:
     }
     void render(SDL_Renderer* renderer)
     {
-        SDL_SetRenderDrawColor(renderer ,255,255,0,255);
-        SDL_RenderFillRect(renderer,&rect);
+       double angle = atan2(dirY, dirX) * 180 / M_PI; // Tính góc xoay
+
+        SDL_Point center;
+        center.x = rect.w / 2;
+        center.y = rect.h / 2;
+
+        SDL_RenderCopyEx(renderer, playerTexture, NULL, &rect, angle, NULL, SDL_FLIP_NONE);
         for(auto &bullet :bullets) bullet.render(renderer);
     }
 };
@@ -196,6 +222,7 @@ class Game{
 public:
     SDL_Window* window;
     SDL_Renderer* renderer;
+
     bool running;
     vector <Wall> walls;
     //PlayerTank player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
@@ -231,6 +258,21 @@ public:
             cerr<<"Renderer no creater"<<SDL_GetError<<endl;
             running =0;
         }
+         // Khởi tạo SDL_image sau khi renderer được tạo
+        int imgFlags = IMG_INIT_PNG;
+        if (!(IMG_Init(imgFlags) & imgFlags)) {
+            std::cerr << "SDL_image initialization failed: " << IMG_GetError() << std::endl;
+            running = false;
+            return; // Thoát nếu không khởi tạo được SDL_image
+        }
+        playerTexture =IMG_LoadTexture(renderer,"playerTank.png");
+        if(!playerTexture){cerr<<"loi";}
+        enemyTexture =IMG_LoadTexture(renderer,"enemyTank.png");
+        if(!enemyTexture){cerr<<"loi";}
+        bulletTexture =IMG_LoadTexture(renderer,"bullet.png");
+        if(!bulletTexture){cerr<<"loi";}
+        wallTexture =IMG_LoadTexture(renderer,"wall.png");
+        if(!wallTexture){cerr<<"loi";}
         generateWalls();
         player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
         spawnEnemies();
@@ -244,10 +286,26 @@ public:
             else if(event.type==SDL_KEYDOWN)
             switch(event.key.keysym.sym)
             {
-                case SDLK_UP:player.move(0,-5,walls);break;
-                case SDLK_DOWN:player.move(0,5,walls);break;
-                case SDLK_LEFT:player.move(-5,0,walls);break;
-                case SDLK_RIGHT:player.move(5,0,walls);break;
+                case SDLK_UP:
+                    player.dirX = 0;
+                    player.dirY = -1;
+                    player.move(0, -5, walls);
+                    break;
+            case SDLK_DOWN:
+                player.dirX = 0;
+                player.dirY = 1;
+                player.move(0, 5, walls);
+                break;
+            case SDLK_LEFT:
+                player.dirX = -1;
+                player.dirY = 0;
+                player.move(-5, 0, walls);
+                break;
+            case SDLK_RIGHT:
+                player.dirX = 1;
+                player.dirY = 0;
+                player.move(5, 0, walls);
+                break;
                 case SDLK_SPACE:player.shoot();break;
             }
         }
@@ -283,7 +341,7 @@ public:
             SDL_RenderFillRect(renderer, &tile);
         }
     }
-    for(int i=0;i<walls.size();i++) walls[i].render(renderer);
+    for(std::vector<Wall>::size_type i=0;i<walls.size();i++) walls[i].render(renderer);
     player.render(renderer);
     for(auto &enemy:enemies)
     {
@@ -318,7 +376,6 @@ public:
             if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
                 wall.active = false;
                 bullet.active = false;
-                break;
             }
         }
     }
@@ -375,3 +432,4 @@ int main(int argc,char* argv[])
     }
     return 0;
 }
+
