@@ -4,6 +4,7 @@
 #include <SDL_image.h>
 #include<algorithm>
 #include <cmath> // Thêm include này
+#include <ctime>
 using namespace std;
 const int SCREEN_WIDTH=800;
 const int SCREEN_HEIGHT=600;
@@ -83,6 +84,7 @@ public:
     int moveDelay, shootDelay;
     SDL_Rect rect;
     bool active;
+    int directionChangeTimer=0;
     std::vector<Bullet> bullets;
 
     EnemyTank(int startX, int startY) {
@@ -97,26 +99,10 @@ public:
     }
     void move(const std::vector<Wall>& walls) {
         if (--moveDelay > 0) return;
-        moveDelay = 15;
-        int r = rand() % 4;
-        if (r == 0) { // Up
-            this->dirX = 0;
-            this->dirY = -1;
-        }
-        else if (r == 1) { // Down
-            this->dirX = 0;
-            this->dirY = 1;
-        }
-        else if (r == 2) { // Left
-            this->dirY = 0;
-            this->dirX = -1;
-        }
-        else if (r == 3) { // Right
-            this->dirY = 0;
-            this->dirX = 1;
-        }
-        int newX = x + this->dirX * 5;  // Giữ nguyên vận tốc
-        int newY = y + this->dirY * 5;  // Giữ nguyên vận tốc
+        moveDelay = 10;
+
+        int newX = x + this->dirX * 5;
+        int newY = y + this->dirY * 5;
 
         SDL_Rect newRect = { newX, newY, TILE_SIZE, TILE_SIZE };
         for (const auto& wall : walls) {
@@ -147,7 +133,40 @@ void updateBullets() {
     bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
                                  [](Bullet &b) { return !b.active; }), bullets.end());
 }
+ void changeDirection(const std::vector<Wall>& walls) {
+        directionChangeTimer++;
+        if (directionChangeTimer >= 240) {
+            directionChangeTimer = 0;
 
+            int r = rand() % 4;
+            if (r == 0) {
+                dirX = 0;
+                dirY = -1;
+            }
+            else if (r == 1) {
+                dirX = 0;
+                dirY = 1;
+            }
+            else if (r == 2) {
+                dirY = 0;
+                dirX = -1;
+            }
+            else if (r == 3) {
+                dirY = 0;
+                dirX = 1;
+            }
+
+            int newX = x + dirX * 7;
+            int newY = y + dirY * 7;
+            SDL_Rect newRect = { newX, newY, TILE_SIZE, TILE_SIZE };
+            for (const auto& wall : walls) {
+                if (wall.active && SDL_HasIntersection(&newRect, &wall.rect)) {
+                   changeDirection(walls);
+                    return;
+                }
+            }
+        }
+    }
 void render(SDL_Renderer* renderer) {
     double angle = atan2(dirY, dirX) * 180 / M_PI;
 
@@ -277,6 +296,59 @@ public:
         player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
         spawnEnemies();
     };
+    void updateEnemyTanks() {
+    for (auto& enemy : enemies) {
+        // Tính khoảng cách giữa enemy và player
+        int dx = player.x - enemy.x;
+        int dy = player.y - enemy.y;
+
+        // Nếu player nằm trên cùng 1 đường, enemy có thể bắn
+        if ((dx == 0 || dy == 0) && (rand() % 100 < 5)) {
+            enemy.shoot(); // Enemy bắn với tỉ lệ 5% mỗi frame nếu có tầm nhìn
+        }
+
+        // Nếu player ở gần, địch sẽ đuổi theo
+        if (abs(dx) + abs(dy) < 200) {
+            if (abs(dx) > abs(dy)) {
+                enemy.dirX = (dx > 0) ? 1 : -1;
+                enemy.dirY = 0;
+            } else {
+                enemy.dirY = (dy > 0) ? 1 : -1;
+                enemy.dirX = 0;
+            }
+        } else {
+            // Nếu không thấy player, di chuyển ngẫu nhiên nhưng tránh tường
+            if (rand() % 100 < 10) { // 10% cơ hội thay đổi hướng
+                int r = rand() % 4;
+                enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
+                enemy.dirY = (r == 2) ? -1 : (r == 3) ? 1 : 0;
+            }
+        }
+
+        // Kiểm tra va chạm với tường trước khi di chuyển
+        int newX = enemy.x + enemy.dirX * 5;
+        int newY = enemy.y + enemy.dirY * 5;
+        SDL_Rect newRect = { newX, newY, TILE_SIZE, TILE_SIZE };
+
+        bool collision = false;
+        for (const auto& wall : walls) {
+            if (wall.active && SDL_HasIntersection(&newRect, &wall.rect)) {
+                collision = true;
+                break;
+            }
+        }
+
+        if (!collision) {
+            enemy.move(walls);
+        } else {
+            // Nếu bị kẹt, đổi hướng
+            int r = rand() % 4;
+            enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
+            enemy.dirY = (r == 2) ? -1 : (r == 3) ? 1 : 0;
+        }
+    }
+}
+
     void Events()
     {
         SDL_Event event;
@@ -351,6 +423,7 @@ public:
     }
     void update() {
     player.updateBullets();
+    updateEnemyTanks();
      for (auto& enemy : enemies) {
         enemy.move(walls);
         enemy.updateBullets();
@@ -432,4 +505,5 @@ int main(int argc,char* argv[])
     }
     return 0;
 }
+
 
