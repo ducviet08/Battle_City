@@ -5,6 +5,7 @@
 #include<algorithm>
 #include <cmath> // Thêm include này
 #include <ctime>
+#include <utility>
 using namespace std;
 const int SCREEN_WIDTH=800;
 const int SCREEN_HEIGHT=600;
@@ -15,6 +16,15 @@ SDL_Texture *playerTexture;
 SDL_Texture *enemyTexture;
 SDL_Texture *bulletTexture;
 SDL_Texture *wallTexture;
+SDL_Texture *wall2Texture;
+SDL_Texture *wall3Texture;
+vector<int >wall1x={12,0,4,4,8,8,8,8,8,12,12,16,20,20,20,20,24,24,24,24,28,32,32,32,32,36,36,36,36,36,40,40,44,52,52,52,52,52,52,52,52,56,56,58,60,60,62,64,64,66,68,68,72,72,72,72,72,72,72,72};
+vector<int>wall1y ={16,12,8,16,12,20,28,32,40,28,40,40,40,36,32,28,12,16,20,24,12,12,24,36,40,12,24,36,16,20,44,48,44,4,8,12,16,20,28,32,36,38,4,8,12,38,16,12,38,8,4,38,4,8,12,16,20,28,32,36};
+vector<int> wall2x={0,4,8,12,16,16,28,28,32,44};
+vector<int> wall2y={48,12,16,36,20,32,20,32,16,4};
+vector<int> wall3x={0,0,0,4,4,8,8,12,12,16,16,20,24,28,28,32,32,36,36,36,40,40,40,44,44,44,44,44,48,48,56,68,58,62,66};
+vector<int> wall3y={44,40,36,36,48,36,48,44,48,24,28,20,32,24,28,4,8,4,40,44,40,4,16,8,12,16,48,52,48,52,24,24,34,34,34};
+
 class Bullet{
 public:
     int x,y;
@@ -35,16 +45,14 @@ public:
     y += dy;
     rect.x = x;
     rect.y = y;
-    if (x < TILE_SIZE || x > SCREEN_WIDTH - TILE_SIZE ||
-        y < TILE_SIZE || y > SCREEN_HEIGHT - TILE_SIZE) {
+    if (x < 0 || x > SCREEN_WIDTH - 2*TILE_SIZE ||
+        y < 0 || y > SCREEN_HEIGHT) {
         active = false;
     }
     }
 
     void render(SDL_Renderer* renderer) {
     if (active) {
-        //SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        //SDL_RenderFillRect(renderer, &rect);
         double angle = atan2(dy, dx) * 180 / M_PI; // Tính góc xoay
 
         SDL_Point center;
@@ -60,22 +68,43 @@ public:
     int x,y;
     SDL_Rect rect;
     bool active;
-
-    Wall(int startX, int startY)
+    int health;
+    int type;
+    Wall(int startX, int startY,int kaka)
     {
         x = startX;
         y = startY;
         active = true;
-        rect = {x, y, TILE_SIZE, TILE_SIZE};
+        rect = {x, y, 40, 40};
+        type=kaka;
+        switch (type)
+        {
+            case 0: health=2;break;
+            case 1: health=1;break;
+            case 2: health=1000;break;
+        }
     }
    void render(SDL_Renderer* renderer) {
     if (active) {
-        //SDL_SetRenderDrawColor(renderer, 150, 75, 0, 255); // Brown color
-        //SDL_RenderFillRect(renderer, &rect);
-        SDL_RenderCopy(renderer,wallTexture,NULL,&rect);
+    SDL_Texture* currentTexture = nullptr;
 
-    }
+        switch (type) {
+            case 0:
+                currentTexture = wallTexture;
+                break;
+            case 1:
+                currentTexture = wall2Texture;
+                break;
+            case 2:
+                currentTexture = wall3Texture;
+                break;
+        }
+
+        if (currentTexture) {
+            SDL_RenderCopy(renderer, currentTexture, NULL, &rect);
+        }
    }
+}
 };
 class EnemyTank {
 public:
@@ -111,8 +140,8 @@ public:
             }
         }
 
-        if (newX >= TILE_SIZE && newX <= SCREEN_WIDTH - TILE_SIZE * 2 &&
-            newY >= TILE_SIZE && newY <= SCREEN_HEIGHT - TILE_SIZE * 2) {
+        if (newX >= 0 && newX <= SCREEN_WIDTH - TILE_SIZE * 2 &&
+            newY >= 0 && newY <= SCREEN_HEIGHT-TILE_SIZE) {
             x = newX;
             y = newY;
             rect.x = x;
@@ -135,7 +164,7 @@ void updateBullets() {
 }
  void changeDirection(const std::vector<Wall>& walls) {
         directionChangeTimer++;
-        if (directionChangeTimer >= 240) {
+        if (directionChangeTimer >= 10000000) {
             directionChangeTimer = 0;
 
             int r = rand() % 4;
@@ -203,9 +232,9 @@ public:
         this->dirX=dx;
         this->dirY=dy;
         SDL_Rect newRect={newX,newY,TILE_SIZE,TILE_SIZE};
-        for(std::vector<Wall>::size_type i=0;i<walls.size();i++) // Corrected loop counter type
+        for(int i=0;i<walls.size();i++) // Corrected loop counter type
             if(walls[i].active&&SDL_HasIntersection(&newRect,&walls[i].rect))  return;
-        if(newX>=TILE_SIZE&&newY>=TILE_SIZE&&newX<=SCREEN_WIDTH-2*TILE_SIZE&&newY<=SCREEN_HEIGHT-2*TILE_SIZE)
+        if(newX>=0&&newY>=0&&newX<=SCREEN_WIDTH-2*TILE_SIZE&&newY<=SCREEN_HEIGHT-TILE_SIZE)
         {
             x=newX;
             y=newY;
@@ -249,14 +278,17 @@ public:
     int enemyNumber =3;
     vector<EnemyTank> enemies;
     void generateWalls() {
-    for (int i = 3; i < MAP_HEIGHT - 3; i += 2) {
-        for (int j = 3; j < MAP_WIDTH - 3; j += 2) {
-            Wall w = Wall(j * TILE_SIZE, i * TILE_SIZE);
-            walls.push_back(w);
-        }
-    }
-    }
-    //funcion
+    //for (int i = 3; i < MAP_HEIGHT - 3; i += 2) {
+        //for (int j = 3; j < MAP_WIDTH - 3; j += 2) {
+            //Wall w = Wall(j * TILE_SIZE, i * TILE_SIZE);
+            for(int i=0;i<wall1x.size();i++)
+                 walls.push_back(Wall(wall1x[i]*10,wall1y[i]*10,0));
+            for(int i=0;i<wall2x.size();i++)
+                 walls.push_back(Wall(wall2x[i]*10,wall2y[i]*10,1));
+            for(int i=0;i<wall3x.size();i++)
+                 walls.push_back(Wall(wall3x[i]*10,wall3y[i]*10,2));
+
+      }
     Game()
     {
         running=true;
@@ -265,7 +297,7 @@ public:
             cerr<<"Error"<<SDL_GetError()<<endl;
             running=false;
         }
-        window=SDL_CreateWindow("Battle_City",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,SCREEN_WIDTH,SCREEN_HEIGHT,SDL_WINDOW_SHOWN);
+        window=SDL_CreateWindow("Battle_City",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,SCREEN_WIDTH+2*TILE_SIZE,SCREEN_HEIGHT,SDL_WINDOW_SHOWN);
         if(!window)
         {
             cerr<<"Window no creater"<<SDL_GetError<<endl;
@@ -292,6 +324,10 @@ public:
         if(!bulletTexture){cerr<<"loi";}
         wallTexture =IMG_LoadTexture(renderer,"wall.png");
         if(!wallTexture){cerr<<"loi";}
+        wall2Texture=IMG_LoadTexture(renderer,"wall2.jpg");
+        if(!wall2Texture){cerr<<"loi2";}
+        wall3Texture=IMG_LoadTexture(renderer,"wall3.png");
+        if(!wall3Texture){cerr<<"loi3";}
         generateWalls();
         player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
         spawnEnemies();
@@ -407,13 +443,13 @@ public:
     SDL_RenderClear(renderer); // delete color
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    for (int i = 1; i < MAP_HEIGHT - 1; ++i) {
-        for (int j = 1; j < MAP_WIDTH - 1; ++j) {
+    for (int i = 0; i < MAP_HEIGHT ; ++i) {
+        for (int j = 0; j < MAP_WIDTH -1; ++j) {
             SDL_Rect tile = {j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE};
             SDL_RenderFillRect(renderer, &tile);
         }
     }
-    for(std::vector<Wall>::size_type i=0;i<walls.size();i++) walls[i].render(renderer);
+    for(int i=0;i<walls.size();i++) walls[i].render(renderer);
     player.render(renderer);
     for(auto &enemy:enemies)
     {
@@ -436,7 +472,9 @@ public:
         for (auto& bullet : enemy.bullets) {
             for (auto& wall : walls) {
                 if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
-                    wall.active = false;
+                    wall.health--;
+                    if(wall.health==0)
+                        wall.active = false;
                     bullet.active = false;
                     break;
                 }
@@ -447,7 +485,9 @@ public:
     for (auto& bullet : player.bullets) {
         for (auto& wall : walls) {
             if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
-                wall.active = false;
+                wall.health--;
+                if(wall.health==0)
+                 wall.active = false;
                 bullet.active = false;
             }
         }
@@ -505,5 +545,3 @@ int main(int argc,char* argv[])
     }
     return 0;
 }
-
-
