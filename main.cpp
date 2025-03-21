@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <vector>
 #include <SDL.h>
@@ -7,7 +6,8 @@
 #include <cmath>
 #include <ctime>
 #include <utility>
-
+#include <SDL_ttf.h>
+#include <string>
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -158,7 +158,6 @@ public:
         }
     }
 };
-
 class EnemyTank {
 public:
     int x, y;
@@ -207,7 +206,7 @@ public:
         if (--shootDelay > 0) return;
         shootDelay = 5;
         bullets.push_back(Bullet(x + TILE_SIZE / 2 - 5, y + TILE_SIZE / 2 - 5,
-                                   this->dirX, this->dirY));
+                                   this->dirX*2, this->dirY*2));
     }
 
     void updateBullets() {
@@ -216,38 +215,6 @@ public:
         }
         bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
                                      [](Bullet &b) { return !b.active; }), bullets.end());
-    }
-
-    void changeDirection(const std::vector<Wall> &walls) {
-        directionChangeTimer++;
-        if (directionChangeTimer >= 10000000) {
-            directionChangeTimer = 0;
-
-            int r = rand() % 4;
-            if (r == 0) {
-                dirX = 0;
-                dirY = -1;
-            } else if (r == 1) {
-                dirX = 0;
-                dirY = 1;
-            } else if (r == 2) {
-                dirY = 0;
-                dirX = -1;
-            } else if (r == 3) {
-                dirY = 0;
-                dirX = 1;
-            }
-
-            int newX = x + dirX * 7;
-            int newY = y + dirY * 7;
-            SDL_Rect newRect = {newX, newY, TILE_SIZE, TILE_SIZE};
-            for (const auto &wall : walls) {
-                if (wall.active && SDL_HasIntersection(&newRect, &wall.rect)) {
-                    changeDirection(walls);
-                    return;
-                }
-            }
-        }
     }
 
     void render(SDL_Renderer *renderer) {
@@ -298,8 +265,9 @@ public:
     }
 
     void shoot() {
+        if(bullets.size()==0)
         bullets.push_back(Bullet(x + TILE_SIZE / 2 - 5, y + TILE_SIZE / 2 - 5,
-                                   this->dirX, this->dirY));
+                                   this->dirX*2, this->dirY*2));
     }
 
     void updateBullets() {
@@ -327,14 +295,14 @@ class Game {
 public:
     SDL_Window *window;
     SDL_Renderer *renderer;
-
+    TTF_Font* font;
     bool running;
     vector<Wall> walls;
-    PlayerTank player=PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);; // Khởi tạo player ở đây
+    PlayerTank player=PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
     int enemyNumber = 3;
     vector<EnemyTank> enemies;
     vector<Explosion> explosions; // Danh sách các vụ nổ
-
+    int score=0;
     void generateWalls() {
         for (int i = 0; i < wall1x.size(); i++)
             walls.push_back(Wall(wall1x[i] * 10, wall1y[i] * 10, 0));
@@ -346,11 +314,16 @@ public:
 
     Game() {
         running = true;
+         if (TTF_Init() == -1) {
+            std::cerr << "SDL_ttf initialization failed: " << TTF_GetError() << std::endl;
+            running = false;
+            return;
+        }
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
             cerr << "Error" << SDL_GetError() << endl;
             running = false;
         }
-        window = SDL_CreateWindow("Battle_City", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH + 2 * TILE_SIZE, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("Battle_City", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH + 4 * TILE_SIZE, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (!window) {
             cerr << "Window no creater" << SDL_GetError << endl;
             running = 0;
@@ -360,7 +333,7 @@ public:
             cerr << "Renderer no creater" << SDL_GetError << endl;
             running = 0;
         }
-
+         font = TTF_OpenFont("type.ttf", 24);
         int imgFlags = IMG_INIT_PNG;
         if (!(IMG_Init(imgFlags) & imgFlags)) {
             std::cerr << "SDL_image initialization failed: " << IMG_GetError() << std::endl;
@@ -409,30 +382,31 @@ public:
         player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
         spawnEnemies();
     }
-
+    SDL_Texture *createScoreTexture()
+    {
+        string scoreText="Score: "+to_string(score);
+        SDL_Color textColor={255,255,255,255};
+        SDL_Surface* textSurface = TTF_RenderText_Solid(font, scoreText.c_str(), textColor);
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_FreeSurface(textSurface);
+        return textTexture;
+    }
     void updateEnemyTanks() {
         for (auto &enemy : enemies) {
+            //enemy.changeDirection(walls);
+            enemy.directionChangeTimer++;
+            if(enemy.directionChangeTimer==150)
+            {
+                enemy.directionChangeTimer=0;
+                int r = rand() % 4;
+                enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
+                enemy.dirY = (r == 2) ? -1 : (r == 3) ? 1 : 0;
+            }
             int dx = player.x - enemy.x;
             int dy = player.y - enemy.y;
 
             if ((dx == 0 || dy == 0) && (rand() % 100 < 5)) {
                 enemy.shoot();
-            }
-
-            if (abs(dx) + abs(dy) < 200) {
-                if (abs(dx) > abs(dy)) {
-                    enemy.dirX = (dx > 0) ? 1 : -1;
-                    enemy.dirY = 0;
-                } else {
-                    enemy.dirY = (dy > 0) ? 1 : -1;
-                    enemy.dirX = 0;
-                }
-            } else {
-                if (rand() % 100 < 10) {
-                    int r = rand() % 4;
-                    enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
-                    enemy.dirY = (r == 2) ? -1 : (r == 3) ? 1 : 0;
-                }
             }
 
             int newX = enemy.x + enemy.dirX * 5;
@@ -450,59 +424,64 @@ public:
             if (!collision) {
                 enemy.move(walls);
             } else {
+                enemy.directionChangeTimer=0;
                 int r = rand() % 4;
                 enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
                 enemy.dirY = (r == 2) ? -1 : (r == 3) ? 1 : 0;
             }
         }
     }
-
     void Events() {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT)
-                running = 0;
-            else if (event.type == SDL_KEYDOWN)
-                switch (event.key.keysym.sym) {
-                    case SDLK_UP:
-                        player.dirX = 0;
-                        player.dirY = -1;
-                        player.move(0, -5, walls);
-                        break;
-                    case SDLK_DOWN:
-                        player.dirX = 0;
-                        player.dirY = 1;
-                        player.move(0, 5, walls);
-                        break;
-                    case SDLK_LEFT:
-                        player.dirX = -1;
-                        player.dirY = 0;
-                        player.move(-5, 0, walls);
-                        break;
-                    case SDLK_RIGHT:
-                        player.dirX = 1;
-                        player.dirY = 0;
-                        player.move(5, 0, walls);
-                        break;
-                    case SDLK_SPACE:
-                        player.shoot();
-                        break;
-                }
-        }
+    SDL_Event event;
+    const Uint8 *keystate = SDL_GetKeyboardState(NULL); // Lấy trạng thái bàn phím
+
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT)
+            running = 0;
     }
+
+    // Di chuyển dựa trên trạng thái phím
+    if (keystate[SDL_SCANCODE_UP]) {
+        player.dirX = 0;
+        player.dirY = -1;
+        player.move(0, -2, walls);
+    }
+    else if (keystate[SDL_SCANCODE_DOWN]) {
+        player.dirX = 0;
+        player.dirY = 1;
+        player.move(0,2, walls);
+    }
+    else if (keystate[SDL_SCANCODE_LEFT]) {
+        player.dirX = -1;
+        player.dirY = 0;
+        player.move(-2, 0, walls);
+    }
+    else if (keystate[SDL_SCANCODE_RIGHT]) {
+        player.dirX = 1;
+        player.dirY = 0;
+        player.move(2, 0, walls);
+    }
+    if (keystate[SDL_SCANCODE_SPACE]) {
+        player.shoot();
+    }
+}
 
     void spawnEnemies() {
         enemies.clear();
         for (int i = 0; i < enemyNumber; ++i) {
+                SDL_Rect checkEnemy;
             int ex, ey;
             bool validPosition = false;
             while (!validPosition) {
                 ex = (rand() % (MAP_WIDTH - 2) + 1) * TILE_SIZE;
                 ey = (rand() % (MAP_HEIGHT - 2) + 1) * TILE_SIZE;
                 validPosition = true;
+                checkEnemy.x=ex;
+                checkEnemy.y=ey;
+                checkEnemy.h=checkEnemy.w=40;
                 for (const auto &wall : walls) {
-                    if (wall.active && wall.x == ex && wall.y == ey) {
-                        validPosition = false;
+                    if  ((wall.active && SDL_HasIntersection(&checkEnemy, &wall.rect))||((abs(player.x-ex)<200)&&(abs(player.y-ey<200)))) {
+                    validPosition = false;
                         break;
                     }
                 }
@@ -517,11 +496,11 @@ public:
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         for (int i = 0; i < MAP_HEIGHT; ++i) {
-            for (int j = 0; j < MAP_WIDTH - 1; ++j) {
-                SDL_Rect tile = {j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE};
-                SDL_RenderFillRect(renderer, &tile);
+           for (int j = 0; j < MAP_WIDTH - 1; ++j) {
+               SDL_Rect tile = {j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+               SDL_RenderFillRect(renderer, &tile);
             }
-        }
+       }
 
         for (int i = 0; i < walls.size(); i++)
             walls[i].render(renderer);
@@ -534,13 +513,24 @@ public:
         for (auto &explosion : explosions) {
             explosion.render(renderer);
         }
+         SDL_Texture* scoreTexture = createScoreTexture();
+    if (scoreTexture) {
+        // Tạo rect để định vị texture
+        SDL_Rect scoreRect = {780, 100, 160,120 }; // Vị trí ở góc trên bên trái
 
+        // Vẽ texture điểm số
+        SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
+
+        // Giải phóng texture sau khi sử dụng
+        SDL_DestroyTexture(scoreTexture);
+    }
         SDL_RenderPresent(renderer);
     }
 
     void update() {
         player.updateBullets();
         updateEnemyTanks();
+        if(score==10) running=false;
 
         for (auto &enemy : enemies) {
             enemy.move(walls);
@@ -592,6 +582,7 @@ public:
 
                     enemy.active = false;
                     bullet.active = false;
+                    score++;
                 }
             }
         }
@@ -600,7 +591,7 @@ public:
                                      [](EnemyTank &e) { return !e.active; }), enemies.end());
 
         if (enemies.empty()) {
-            running = false;
+            spawnEnemies();
         }
 
         // Xử lý va chạm đạn của địch với người chơi
@@ -631,7 +622,7 @@ public:
             Events();
             update();
             render();
-            SDL_Delay(16);
+            SDL_Delay(15);
         }
     }
 
