@@ -1,5 +1,14 @@
 # depslib dependency file v1.0
-1742578961 source:d:\c++\game\demoo\battle\main.cpp
+1742675352 source:d:\c++\game\demoo\battle\main.cpp
+	<vector>
+	<SDL.h>
+	<SDL_image.h>
+	<algorithm>
+	<cmath>
+	<ctime>
+	<utility>
+	<SDL_ttf.h>
+	<string>
 	<iostream>
 	<vector>
 	<SDL.h>
