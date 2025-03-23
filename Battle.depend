@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1742675352 source:d:\c++\game\demoo\battle\main.cpp
+1742713417 source:d:\c++\game\demoo\battle\main.cpp
 	<vector>
 	<SDL.h>
 	<SDL_image.h>
