@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1742732828 source:d:\c++\game\demoo\battle\main.cpp
+1742921999 source:d:\c++\game\demoo\battle\main.cpp
 	<iostream>
 	<vector>
 	<SDL.h>
@@ -11,4 +11,6 @@
 	<SDL_ttf.h>
 	<string>
 	<sdl_mixer.h>
+	<fstream>
+	<sstream>
 
