@@ -10,6 +10,7 @@
 #include <string>
 #include <sdl_mixer.h>
 #include <fstream>
+#include <sstream> // For stringstream
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -18,18 +19,43 @@ const int TILE_SIZE = 40;
 const int MAP_WIDTH = SCREEN_WIDTH / TILE_SIZE;
 const int MAP_HEIGHT = SCREEN_HEIGHT / TILE_SIZE;
 
-SDL_Texture *playerTexture;
-SDL_Texture *enemyTexture;
-SDL_Texture *bulletTexture;
-SDL_Texture *wallTexture;
-SDL_Texture *wall2Texture;
-SDL_Texture *wall3Texture;
+// Global variables (moved from Game class)
+SDL_Window *window = nullptr;
+SDL_Renderer *renderer = nullptr;
+TTF_Font* font = nullptr;
+bool running = true;
+vector<class Wall> walls;
+
+int enemyNumber = 3;
+vector<class EnemyTank> enemies;
+vector<class Explosion> explosions;
+int score = 0;
+int timee = 0; // Avoid name conflict with std::time
+int level = 1;
+bool gameStarted = false;
+bool inMenu = true;
+SDL_Texture* startButtonTexture = nullptr;
+SDL_Texture* instructionButtonTexture = nullptr;
+SDL_Texture* instructionTextTexture = nullptr;
+SDL_Texture* continueButtonTexture = nullptr;
+SDL_Texture* pauseTexture = nullptr;
+bool showInstructions = false;
+//SDL_Texture* saveButtonTexture = nullptr;
+bool gameOver = false;
+bool gameWon = false;
+SDL_Texture* winTexture = nullptr;
+SDL_Texture* loseTexture = nullptr;
+SDL_Texture* playAgainText = nullptr;
+SDL_Texture *playerTexture = nullptr;
+SDL_Texture *enemyTexture = nullptr;
+SDL_Texture *bulletTexture = nullptr;
+SDL_Texture *wallTexture = nullptr;
+SDL_Texture *wall2Texture = nullptr;
+SDL_Texture *wall3Texture = nullptr;
 Mix_Chunk *fireSound = nullptr;
 Mix_Chunk *explosionSound = nullptr;
-//Mix_Music *backgroundMusic = nullptr;
 Mix_Music *winSound=nullptr;
 Mix_Music *loseSound = nullptr;
-// Texture hiệu ứng nổ
 SDL_Texture *explosionTextures[4];
 
 vector<int> wall1x = {12, 0, 4, 4, 8, 8, 8, 8, 8, 12, 12, 16, 20, 20, 20, 20, 24, 24, 24, 24, 28, 32, 32, 32, 32, 36, 36, 36, 36, 36, 40, 40, 44, 52, 52, 52, 52, 52, 52, 52, 52, 56, 56, 58, 60, 60, 62, 64, 64, 66, 68, 68, 72, 72, 72, 72, 72, 72, 72, 72};
@@ -306,34 +332,116 @@ public:
             bullet.render(renderer);
     }
 };
+PlayerTank player=PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+
+// Forward declaration of Game class
+class Game;
+
+bool SaveGame(const Game& game, const string& filename);
+bool LoadGame(Game& game, const std::string& filename);
+
+// Lưu game sang file save.txt (moved outside Game class)
+bool SaveGame(const Game& game, const string& filename) {
+    ofstream file(filename); // Open file in text mode
+    if (!file.is_open()) {
+        cerr << "Failed to open file for saving: " << filename << endl;
+        return false;
+    }
+
+    // Save general info
+    file << "Score: " << score << endl;
+    file << "Time: " << timee << endl;
+    file << "Level: " << level << endl;
+    file << "EnemyNumber: " << enemyNumber << endl;
+
+    // Save player position
+    file << "PlayerX: " << player.x << endl;
+    file << "PlayerY: " << player.y << endl;
+
+    // Save wall states
+    file << "Walls: " << walls.size() << endl;
+    for (const auto& wall : walls) {
+        file << wall.active << " ";
+    }
+    file << endl;
+
+    // Save enemy states and positions
+    file << "Enemies: " << enemies.size() << endl;
+    for (const auto& enemy : enemies) {
+        file << enemy.active << " " << enemy.x << " " << enemy.y << endl;
+    }
+
+    file.close();
+    cout << "Game saved to: " << filename << endl;
+    return true;
+}
+
+// Load game từ file save.txt (moved outside Game class)
+bool LoadGame(Game& game, const std::string& filename) {
+    ifstream file(filename); // Open file in text mode
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for loading: " << filename << std::endl;
+        return false;
+    }
+
+    string line;
+    stringstream ss;
+
+    // Load general info
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> score; ss.clear();
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> timee; ss.clear();
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> level; ss.clear();
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> enemyNumber; ss.clear();
+
+    // Load player position
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> player.x; ss.clear();
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> player.y; ss.clear();
+
+    // Load wall states
+    size_t numWalls;
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> numWalls; ss.clear();
+
+    if (numWalls == walls.size()) {
+        getline(file, line);
+        ss.str(line);
+        for (size_t i = 0; i < walls.size(); ++i) {
+            ss >> walls[i].active;
+        }
+        ss.clear();
+    } else {
+        std::cerr << "Wall count mismatch!" << std::endl;
+    }
+
+    // Load enemy states and positions
+    size_t numEnemies;
+    getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> numEnemies; ss.clear();
+
+    enemies.clear();
+    for (size_t i = 0; i < numEnemies; ++i) {
+        bool active;
+        int x, y;
+        getline(file, line);
+        ss.str(line);
+        ss >> active >> x >> y;
+        ss.clear();
+
+        if (active) {
+            EnemyTank enemy(x, y);
+            enemy.active = true;
+            enemies.push_back(enemy);
+        }
+    }
+
+    file.close();
+    std::cout << "Game loaded from: " << filename << std::endl;
+    return true;
+}
+
+
 
 class Game {
 public:
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    TTF_Font* font;
-    bool running;
-    vector<Wall> walls;
-    PlayerTank player=PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
-    int enemyNumber = 3;
-    vector<EnemyTank> enemies;
-    vector<Explosion> explosions; // Danh sách các vụ nổ
-    int score=0;
-    int time=0;
-    int level=1;
-    bool inMenu = true; // Thêm biến để kiểm tra xem có đang ở menu hay không
-    SDL_Texture* startButtonTexture;
-    SDL_Texture* instructionButtonTexture;
-    SDL_Texture* instructionTextTexture;
-    bool showInstructions = false;
-    bool isPaused=false;
-
-    // Additions for win/lose screens
-    bool gameOver = false;
-    bool gameWon = false;
-    SDL_Texture* winTexture = nullptr;
-    SDL_Texture* loseTexture = nullptr;
-    SDL_Texture* playAgainText=nullptr;
+    // Removed declarations of global variables from here
 
     void generateWalls() {
         for (int i = 0; i < wall1x.size(); i++)
@@ -345,7 +453,7 @@ public:
     }
 
     Game() {
-        running = true;
+        // Removed initializations of global variables
          if (TTF_Init() == -1) {
             std::cerr << "SDL_ttf initialization failed: " << TTF_GetError() << std::endl;
             running = false;
@@ -362,7 +470,7 @@ public:
         }
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
         if (!renderer) {
-            cerr << "Renderer no creater" << SDL_GetError << endl;
+            cerr << "Renderer no creater" << SDL_GetError() << endl;
             running = 0;
         }
          font = TTF_OpenFont("type.ttf", 24);
@@ -388,6 +496,7 @@ public:
         running = false;
         return;
         }
+        pauseTexture=IMG_LoadTexture(renderer,"pause.png");
         playerTexture = IMG_LoadTexture(renderer, "playerTank.png");
         if (!playerTexture) {
             cerr << "loi";
@@ -424,12 +533,16 @@ public:
                 running = false;
             }
         }
+        gameStarted = false;
 
          // Tạo texture cho nút Start
         SDL_Color textColor = {255, 255, 255, 255};
         SDL_Surface* startSurface = TTF_RenderText_Solid(font, "Start Game", textColor);
         startButtonTexture = SDL_CreateTextureFromSurface(renderer, startSurface);
         SDL_FreeSurface(startSurface);
+        SDL_Surface* continueSurface = TTF_RenderText_Solid(font, "Continue", textColor);
+        continueButtonTexture = SDL_CreateTextureFromSurface(renderer, continueSurface);
+        SDL_FreeSurface(continueSurface);
 
         // Tạo texture cho nút Instructions
         SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Instructions", textColor);
@@ -444,6 +557,9 @@ public:
         //Create Win & Lose Texture
         winTexture=IMG_LoadTexture(renderer,"win.png");
         loseTexture=IMG_LoadTexture(renderer,"lose.png");
+        SDL_Surface* saveSurface = TTF_RenderText_Solid(font, "Save Game", textColor);
+        //saveButtonTexture = SDL_CreateTextureFromSurface(renderer, saveSurface);
+        //SDL_FreeSurface(saveSurface);
         fireSound = Mix_LoadWAV("shoot.mp3"); // Hoặc "fire.mp3", "fire.ogg", v.v.
         if (!fireSound) {
         std::cerr << "Failed to load fire sound: " << Mix_GetError() << std::endl;
@@ -454,6 +570,7 @@ public:
         std::cerr << "Failed to load explosion sound: " << Mix_GetError() << std::endl;
         }
         winSound=Mix_LoadMUS("win.mp3");
+        loseSound=Mix_LoadMUS("lose.mp3");
         SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Play Again!",textColor);
         playAgainText = SDL_CreateTextureFromSurface(renderer,playAgainSurface);
         SDL_FreeSurface(playAgainSurface);
@@ -472,7 +589,7 @@ public:
     }
     SDL_Texture *createTimeTexture()
     {
-        string timeText="Time: "+to_string(time/1000);
+        string timeText="Time: "+to_string(timee/1000);
         SDL_Color textColor={255,255,255,255};
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, timeText.c_str(), textColor);
         SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
@@ -522,6 +639,7 @@ public:
     void Events() {
     SDL_Event event;
     const Uint8 *keystate = SDL_GetKeyboardState(NULL); // Lấy trạng thái bàn phím
+    SDL_Rect pauseButtonRect = {760,0,40, 40};
 
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT)
@@ -537,14 +655,6 @@ public:
                     if (mouseX >= playAgainRect.x && mouseX <= playAgainRect.x + playAgainRect.w &&
                         mouseY >= playAgainRect.y && mouseY <= playAgainRect.y + playAgainRect.h) {
                         // Reset game state
-                        walls.clear();
-                        generateWalls();
-                        player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
-                        enemyNumber = 3;
-                        spawnEnemies();
-                        score = 0;
-                        time = 0;
-                        level = 1;
                         gameOver = false; // Đặt lại trạng thái gameOver
                         inMenu = false;
                     }
@@ -557,27 +667,59 @@ public:
                 SDL_GetMouseState(&mouseX, &mouseY);
 
                 // Kiểm tra xem chuột có nhấp vào nút Start Game không
-                SDL_Rect startButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 - 20, 100, 40};
+                SDL_Rect startButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 - 60, 100, 40};
                 if (mouseX >= startButtonRect.x && mouseX <= startButtonRect.x + startButtonRect.w &&
                     mouseY >= startButtonRect.y && mouseY <= startButtonRect.y + startButtonRect.h) {
+                        gameStarted = true;
+                        walls.clear();
+                        generateWalls();
+                        player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+                        enemyNumber = 3;
+                        spawnEnemies();
+                        score = 0;
+                        timee = 0;
+                        level = 1;
                     inMenu = false; // Bắt đầu trò chơi
                      showInstructions = false;
                 }
+                 SDL_Rect continueButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 , 100, 40};
+                 if (mouseX >= continueButtonRect.x && mouseX <= continueButtonRect.x + continueButtonRect.w &&
+                mouseY >= continueButtonRect.y && mouseY <= continueButtonRect.y + continueButtonRect.h) {
+                     // Attempt to load the game
+                    if (LoadGame(*this, "save.txt")) {
+                        // If the game loads successfully, set inMenu to false
+                        inMenu = false;
+                        showInstructions = false;
+                    } else {
+                        // Handle the case where loading the game fails.  For example:
+                        cout << "No saved game found, starting a new game." << endl;
+                    }
+                }
 
                 // Kiểm tra xem chuột có nhấp vào nút Instructions không
-                SDL_Rect instructionButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 40, 100, 40};
+                SDL_Rect instructionButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 60, 100, 40};
                 if (mouseX >= instructionButtonRect.x && mouseX <= instructionButtonRect.x + instructionButtonRect.w &&
                     mouseY >= instructionButtonRect.y && mouseY <= instructionButtonRect.y + instructionButtonRect.h) {
                      showInstructions = true;
                 }
+                   SDL_Rect saveButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 120, 100, 40};
+
+            }
+        }
+        else
+        {
+             if (event.type == SDL_MOUSEBUTTONDOWN) {
+                    int mouseX, mouseY;
+                    SDL_GetMouseState(&mouseX, &mouseY);
+                    if (mouseX >= pauseButtonRect.x && mouseX <= pauseButtonRect.x + pauseButtonRect.w &&
+                        mouseY >= pauseButtonRect.y && mouseY <= pauseButtonRect.y + pauseButtonRect.h) {
+                            SaveGame(*this, "save.txt");
+                    inMenu = true; // Trở về menu
+                     showInstructions = false;
+                }
             }
         }
     }
-    if (event.type == SDL_KEYDOWN) {
-            if (event.key.keysym.sym == SDLK_p) { // Nhấn phím 'P' để Pause
-                isPaused = !isPaused; // Đảo ngược trạng thái Pause
-            }
-        }
     // Di chuyển dựa trên trạng thái phím
     if (!inMenu && !gameOver) {
             if (keystate[SDL_SCANCODE_UP]) {
@@ -653,19 +795,23 @@ public:
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"menu.png");
             //SDL_RenderFillRect(renderer, &backgroundRect);
             SDL_RenderCopy(renderer,menuText,NULL,&backgroundRect);
-            // Vẽ nút Start Game
-            SDL_Rect startButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 - 20, 100, 40};
-            SDL_RenderCopy(renderer, startButtonTexture, NULL, &startButtonRect);
+             SDL_Rect startButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 - 60, 100, 40};
+        SDL_RenderCopy(renderer, startButtonTexture, NULL, &startButtonRect);
 
-            // Vẽ nút Instructions
-            SDL_Rect instructionButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 40, 100, 40};
-            SDL_RenderCopy(renderer, instructionButtonTexture, NULL, &instructionButtonRect);
+        // Vẽ nút Continue
+        SDL_Rect continueButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 , 100, 40}; // vị trí giữa startButtonRect và instructionButtonRect
+        SDL_RenderCopy(renderer, continueButtonTexture, NULL, &continueButtonRect);
 
+        // Vẽ nút Instructions
+        SDL_Rect instructionButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 60, 100, 40};
+        SDL_RenderCopy(renderer, instructionButtonTexture, NULL, &instructionButtonRect);
             // Hiển thị hướng dẫn nếu nút hướng dẫn được nhấp
             if (showInstructions) {
-                SDL_Rect instructionTextRect = {SCREEN_WIDTH / 2 - 300, SCREEN_HEIGHT / 2 + 100, 600, 80};
+                SDL_Rect instructionTextRect = {SCREEN_WIDTH / 2 - 300, SCREEN_HEIGHT / 2 + 150, 600, 80};
                 SDL_RenderCopy(renderer, instructionTextTexture, NULL, &instructionTextRect);
             }
+            //SDL_Rect saveButtonRect = {SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 120, 100, 40}; // Điều chỉnh vị trí
+             //SDL_RenderCopy(renderer, saveButtonTexture, NULL, &saveButtonRect);
         } else {
             SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH-TILE_SIZE, SCREEN_HEIGHT};
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"background.jpg");
@@ -677,6 +823,8 @@ public:
             for (auto &enemy : enemies) {
                 enemy.render(renderer);
             }
+            SDL_Rect pauseRect={760,0,40,40};
+            SDL_RenderCopy(renderer,pauseTexture,NULL,&pauseRect);
 
             // Render các vụ nổ
             for (auto &explosion : explosions) {
@@ -791,6 +939,15 @@ public:
                         Mix_PlayMusic(loseSound,0);
                         gameOver = true;
                         gameWon = false;
+                        walls.clear();
+                        generateWalls();
+                        player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+                        enemyNumber = 3;
+                        spawnEnemies();
+                        score = 0;
+                        timee = 0;
+                        level = 1;
+                        SaveGame(*this,"save.txt");
                         return;
                     }
                 }
@@ -801,10 +958,19 @@ public:
                         gameWon = true;
                         return;
                     }
-              if(time>=120000){
+              if(timee>=120000){
                         gameOver = true;
                         gameWon = false;
                         Mix_PlayMusic( loseSound, 0);
+                        walls.clear();
+                        generateWalls();
+                        player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+                        enemyNumber = 3;
+                        spawnEnemies();
+                        score = 0;
+                        timee = 0;
+                        level = 1;
+                        SaveGame(*this,"save.txt");
                         return;
                     }
 
@@ -825,7 +991,7 @@ public:
             update();
             render();
             SDL_Delay(15);
-            if(!inMenu&&!gameOver) time+=15;
+            if(!inMenu&&!gameOver) timee+=15;
         }
 
     }
@@ -845,7 +1011,8 @@ public:
 
 int main(int argc, char *argv[]) {
     Game game;
-    if (game.running) {
+    player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+    if (running) {
         game.run();
     }
     return 0;
