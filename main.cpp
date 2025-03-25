@@ -8,6 +8,8 @@
 #include <utility>
 #include <SDL_ttf.h>
 #include <string>
+#include <sdl_mixer.h>
+#include <fstream>
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -22,7 +24,11 @@ SDL_Texture *bulletTexture;
 SDL_Texture *wallTexture;
 SDL_Texture *wall2Texture;
 SDL_Texture *wall3Texture;
-
+Mix_Chunk *fireSound = nullptr;
+Mix_Chunk *explosionSound = nullptr;
+//Mix_Music *backgroundMusic = nullptr;
+Mix_Music *winSound=nullptr;
+Mix_Music *loseSound = nullptr;
 // Texture hiệu ứng nổ
 SDL_Texture *explosionTextures[4];
 
@@ -276,6 +282,7 @@ public:
         bullets.push_back(Bullet(x + TILE_SIZE / 2 - 5, y + TILE_SIZE / 2 - 5,
                                    this->dirX*2, this->dirY*2));
         cooldown=700;
+        Mix_PlayChannel(-1,fireSound, 0);
         }
     }
 
@@ -319,6 +326,7 @@ public:
     SDL_Texture* instructionButtonTexture;
     SDL_Texture* instructionTextTexture;
     bool showInstructions = false;
+    bool isPaused=false;
 
     // Additions for win/lose screens
     bool gameOver = false;
@@ -369,7 +377,17 @@ public:
             running = false;
             return;
         }
+        if (Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG) == 0) {
+            std::cerr << "SDL_mixer initialization failed: " << Mix_GetError() << std::endl;
+            running = false;
+        return;
+        }
 
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        std::cerr << "SDL_mixer could not open audio: " << Mix_GetError() << std::endl;
+        running = false;
+        return;
+        }
         playerTexture = IMG_LoadTexture(renderer, "playerTank.png");
         if (!playerTexture) {
             cerr << "loi";
@@ -426,7 +444,16 @@ public:
         //Create Win & Lose Texture
         winTexture=IMG_LoadTexture(renderer,"win.png");
         loseTexture=IMG_LoadTexture(renderer,"lose.png");
+        fireSound = Mix_LoadWAV("shoot.mp3"); // Hoặc "fire.mp3", "fire.ogg", v.v.
+        if (!fireSound) {
+        std::cerr << "Failed to load fire sound: " << Mix_GetError() << std::endl;
+        }
 
+        explosionSound = Mix_LoadWAV("explosion.mp3");
+        if (!explosionSound) {
+        std::cerr << "Failed to load explosion sound: " << Mix_GetError() << std::endl;
+        }
+        winSound=Mix_LoadMUS("win.mp3");
         SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Play Again!",textColor);
         playAgainText = SDL_CreateTextureFromSurface(renderer,playAgainSurface);
         SDL_FreeSurface(playAgainSurface);
@@ -546,7 +573,11 @@ public:
             }
         }
     }
-
+    if (event.type == SDL_KEYDOWN) {
+            if (event.key.keysym.sym == SDLK_p) { // Nhấn phím 'P' để Pause
+                isPaused = !isPaused; // Đảo ngược trạng thái Pause
+            }
+        }
     // Di chuyển dựa trên trạng thái phím
     if (!inMenu && !gameOver) {
             if (keystate[SDL_SCANCODE_UP]) {
@@ -636,13 +667,6 @@ public:
                 SDL_RenderCopy(renderer, instructionTextTexture, NULL, &instructionTextRect);
             }
         } else {
-            //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            //for (int i = 0; i < MAP_HEIGHT; ++i) {
-              //  for (int j = 0; j < MAP_WIDTH - 1; ++j) {
-               //     SDL_Rect tile = {j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE};
-               //     SDL_RenderFillRect(renderer, &tile);
-               // }
-          //  }
             SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH-TILE_SIZE, SCREEN_HEIGHT};
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"background.jpg");
             //SDL_RenderFillRect(renderer, &backgroundRect);
@@ -724,6 +748,7 @@ public:
                     if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(bullet.x, bullet.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
 
                         wall.health--;
                         if (wall.health == 0)
@@ -739,6 +764,7 @@ public:
                     if (enemy.active && SDL_HasIntersection(&bullet.rect, &enemy.rect)) {
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(enemy.x, enemy.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
 
                         enemy.active = false;
                         bullet.active = false;
@@ -762,7 +788,7 @@ public:
                     if (SDL_HasIntersection(&bullet.rect, &player.rect)) {
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(player.x, player.y));
-
+                        Mix_PlayMusic(loseSound,0);
                         gameOver = true;
                         gameWon = false;
                         return;
@@ -770,6 +796,7 @@ public:
                 }
             }
              if(score==18){
+                        Mix_PlayMusic( winSound,0);
                         gameOver = true;
                         gameWon = true;
                         return;
@@ -777,6 +804,7 @@ public:
               if(time>=120000){
                         gameOver = true;
                         gameWon = false;
+                        Mix_PlayMusic( loseSound, 0);
                         return;
                     }
 
@@ -799,6 +827,7 @@ public:
             SDL_Delay(15);
             if(!inMenu&&!gameOver) time+=15;
         }
+
     }
 
     ~Game() {
