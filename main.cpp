@@ -194,11 +194,23 @@ public:
     int x, y;
     int dirX, dirY;
     int moveDelay, shootDelay;
+    int health;
     SDL_Rect rect;
     bool active;
     int directionChangeTimer = 0;
     std::vector<Bullet> bullets;
 
+    EnemyTank(int startX, int startY,int Health) {
+        health=Health;
+        moveDelay = 15; // Delay for movement
+        shootDelay = 5;  // Delay for shooting
+        x = startX;
+        y = startY;
+        rect = {x, y, TILE_SIZE, TILE_SIZE};
+        dirX = 0;
+        dirY = 1;
+        active = true;
+    }
     EnemyTank(int startX, int startY) {
         moveDelay = 15; // Delay for movement
         shootDelay = 5;  // Delay for shooting
@@ -589,7 +601,7 @@ public:
     }
     SDL_Texture *createTimeTexture()
     {
-        string timeText="Time: "+to_string(timee/1000);
+        string timeText="Time: "+to_string((120000-timee)/1000);
         SDL_Color textColor={255,255,255,255};
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, timeText.c_str(), textColor);
         SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
@@ -629,6 +641,7 @@ public:
             if (!collision) {
                 enemy.move(walls,level);
             } else {
+                enemy.shoot(level);
                 enemy.directionChangeTimer=0;
                 int r = rand() % 4;
                 enemy.dirX = (r == 0) ? -1 : (r == 1) ? 1 : 0;
@@ -765,7 +778,7 @@ public:
                     }
                 }
             }
-            enemies.push_back(EnemyTank(ex, ey));
+            enemies.push_back(EnemyTank(ex, ey,level));
         }
     }
 
@@ -791,7 +804,7 @@ public:
         else if (inMenu) {
             // Vẽ background menu
             //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH+TILE_SIZE*4, SCREEN_HEIGHT};
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"menu.png");
             //SDL_RenderFillRect(renderer, &backgroundRect);
             SDL_RenderCopy(renderer,menuText,NULL,&backgroundRect);
@@ -910,13 +923,16 @@ public:
             for (auto &bullet : player.bullets) {
                 for (auto &enemy : enemies) {
                     if (enemy.active && SDL_HasIntersection(&bullet.rect, &enemy.rect)) {
+                            enemy.health--;
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(enemy.x, enemy.y));
                         Mix_PlayChannel(-1, explosionSound, 0);
-
-                        enemy.active = false;
                         bullet.active = false;
+                        if(enemy.health==0)
+                        {
+                        enemy.active = false;
                         score++;
+                        }
                     }
                 }
             }
@@ -926,8 +942,8 @@ public:
 
             if (enemies.empty()) {
                 enemyNumber++;
-                spawnEnemies();
                 level++;
+                spawnEnemies();
             }
 
             // Xử lý va chạm đạn của địch với người chơi
@@ -950,6 +966,25 @@ public:
                         SaveGame(*this,"save.txt");
                         return;
                     }
+                }
+            }
+            for (auto &enemy : enemies) {
+                    if (SDL_HasIntersection(&enemy.rect, &player.rect)&&enemy.active) {
+                        // Tạo hiệu ứng nổ tại vị trí va chạm
+                        explosions.push_back(Explosion(player.x, player.y));
+                        Mix_PlayMusic(loseSound,0);
+                        gameOver = true;
+                        gameWon = false;
+                        walls.clear();
+                        generateWalls();
+                        player = PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+                        enemyNumber = 3;
+                        spawnEnemies();
+                        score = 0;
+                        timee = 0;
+                        level = 1;
+                        SaveGame(*this,"save.txt");
+                        return;
                 }
             }
              if(score==18){
@@ -990,7 +1025,7 @@ public:
             Events();
             update();
             render();
-            SDL_Delay(15);
+            SDL_Delay(10);
             if(!inMenu&&!gameOver) timee+=15;
         }
 
