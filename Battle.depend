@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1742921999 source:d:\c++\game\demoo\battle\main.cpp
+1743256299 source:d:\c++\game\demoo\battle\main.cpp
 	<iostream>
 	<vector>
 	<SDL.h>
@@ -13,4 +13,81 @@
 	<sdl_mixer.h>
 	<fstream>
 	<sstream>
+	"Game.h"
+	"PlayerTank.h"
+
+1743255529 source:d:\c++\game\demoo\battle\bullet.cpp
+	"Bullet.h"
+	<cmath>
+
+1743255408 d:\c++\game\demoo\battle\bullet.h
+	<SDL.h>
+
+1743255529 source:d:\c++\game\demoo\battle\explosion.cpp
+	"Explosion.h"
+
+1743255529 d:\c++\game\demoo\battle\explosion.h
+	<SDL.h>
+
+1743258633 source:d:\c++\game\demoo\battle\game.cpp
+	"Game.h"
+	<iostream>
+	<algorithm>
+	<cmath>
+	<ctime>
+	<string>
+	"SaveLoad.h"
+	<sstream>
+
+1743255529 d:\c++\game\demoo\battle\game.h
+	<SDL.h>
+	<SDL_ttf.h>
+	<SDL_image.h>
+	<vector>
+	"Wall.h"
+	"PlayerTank.h"
+	"EnemyTank.h"
+	"Explosion.h"
+	<SDL_mixer.h>
+
+1743255529 d:\c++\game\demoo\battle\wall.h
+	<SDL.h>
+
+1743255529 d:\c++\game\demoo\battle\playertank.h
+	<SDL.h>
+	<vector>
+	"Bullet.h"
+
+1743255529 d:\c++\game\demoo\battle\enemytank.h
+	<SDL.h>
+	<vector>
+	"Bullet.h"
+
+1743255578 d:\c++\game\demoo\battle\saveload.h
+	<string>
+
+1743255529 source:d:\c++\game\demoo\battle\wall.cpp
+	"Wall.h"
+
+1743257569 source:d:\c++\game\demoo\battle\enemytank.cpp
+	"EnemyTank.h"
+	<algorithm>
+	"Wall.h"
+	<cmath>
+
+1743259074 source:d:\c++\game\demoo\battle\playertank.cpp
+	"PlayerTank.h"
+	<algorithm>
+	"Wall.h"
+	<cmath>
+	<SDL_mixer.h>
+
+1743256059 source:d:\c++\game\demoo\battle\saveload.cpp
+	"SaveLoad.h"
+	"Game.h"
+	<fstream>
+	<iostream>
+	<sstream>
+	<vector>
+	"Wall.h"
 
