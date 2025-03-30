@@ -37,20 +37,23 @@ int score = 0;
 int timee = 0; // Avoid name conflict with std::time
 int level = 1;
 bool gameStarted = false;
+ bool game2player =false;
 bool inMenu = true;
 SDL_Texture* startButtonTexture = nullptr;
-SDL_Texture* instructionButtonTexture = nullptr;
-SDL_Texture* instructionTextTexture = nullptr;
+SDL_Texture* player2ButtonTexture = nullptr;
 SDL_Texture* continueButtonTexture = nullptr;
 SDL_Texture* pauseTexture = nullptr;
 bool showInstructions = false;
-//SDL_Texture* saveButtonTexture = nullptr;
 bool gameOver = false;
 bool gameWon = false;
+bool gamePlayer1=false;
+SDL_Texture* win1Texture = nullptr;
+SDL_Texture* win2Texture = nullptr;
 SDL_Texture* winTexture = nullptr;
 SDL_Texture* loseTexture = nullptr;
 SDL_Texture* playAgainText = nullptr;
 SDL_Texture *playerTexture = nullptr;
+SDL_Texture *player2Texture = nullptr;
 SDL_Texture *enemyTexture = nullptr;
 SDL_Texture *bulletTexture = nullptr;
 SDL_Texture *wallTexture = nullptr;
@@ -70,6 +73,7 @@ vector<int> wall3x = {0, 0, 0, 4, 4, 8, 8, 12, 12, 16, 16, 20, 24, 28, 28, 32, 3
 vector<int> wall3y = {44, 40, 36, 36, 48, 36, 48, 44, 48, 24, 28, 20, 32, 24, 28, 4, 8, 4, 40, 44, 40, 4, 16, 8, 12, 16, 48, 52, 48, 52, 24, 24, 34, 34, 34};
 
 PlayerTank player=PlayerTank((MAP_WIDTH - 1) / 2 * TILE_SIZE, (MAP_HEIGHT - 2) * TILE_SIZE);
+PlayerTank player2=PlayerTank(0,0);
 
 int main(int argc, char *argv[]) {
     Game game;
