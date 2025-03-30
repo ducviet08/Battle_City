@@ -600,10 +600,10 @@ Game::Game() {
                         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
                         enemyNumber = 3;
                         spawnEnemies();
-                        score = 0;
                         timee = 0;
                         level = 1;
                         maxScore=max(score,maxScore);
+                        score = 0;
                         SaveGame(*this,"save.txt");
                         return;
                     }
