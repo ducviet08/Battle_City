@@ -15,6 +15,7 @@ extern PlayerTank player;
 
 class Game {
 public:
+    bool game2player;
     Game();
     ~Game();
     void run();
