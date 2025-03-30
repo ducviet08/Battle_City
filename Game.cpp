@@ -4,10 +4,9 @@
 #include <cmath>
 #include <ctime>
 #include <string>
-#include "SaveLoad.h" // Include the SaveLoad header
+#include "SaveLoad.h"
 #include <sstream>
 using namespace std;
-// Global variables (moved from main.cpp)
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern TTF_Font* font;
@@ -28,6 +27,9 @@ extern SDL_Texture* startButtonTexture;
 extern SDL_Texture* player2ButtonTexture;
 extern SDL_Texture* continueButtonTexture;
 extern SDL_Texture* pauseTexture;
+extern SDL_Texture* health1Texture;
+extern SDL_Texture* health2Texture;
+extern SDL_Texture* health3Texture;
 //SDL_Texture* saveButtonTexture = nullptr;
 extern bool gameOver;
 extern bool gameWon;
@@ -145,6 +147,9 @@ Game::Game() {
         explosionTextures[1] = IMG_LoadTexture(renderer, "explosion2.png");
         explosionTextures[2] = IMG_LoadTexture(renderer, "explosion3.png");
         explosionTextures[3] = IMG_LoadTexture(renderer, "explosion4.png");
+        health1Texture=IMG_LoadTexture(renderer, "health1.png");
+        health2Texture=IMG_LoadTexture(renderer, "health2.png");
+        health3Texture=IMG_LoadTexture(renderer, "health3.png");
         for (int i = 0;i<=3; ++i) {
             if (!explosionTextures[i]) {
                 cerr << "Failed to load explosion texture " << i + 1 << endl;
@@ -503,6 +508,32 @@ Game::Game() {
             else
             {
                 player2.render(renderer,player2Texture);
+                SDL_Rect imagePlayer1={800,20,60,60};
+                SDL_RenderCopy(renderer,playerTexture,nullptr,&imagePlayer1);
+                SDL_Rect imagePlayer2={800,220,60,60};
+                SDL_RenderCopy(renderer,player2Texture,nullptr,&imagePlayer2);
+                SDL_Rect healthPlayer1Rect={780,100,120,40};
+                SDL_Rect healthPlayer2Rect={780,300,120,40};
+                if(player.health==3)
+                {
+                    SDL_RenderCopy(renderer,health1Texture,nullptr,&healthPlayer1Rect);
+                }
+                else if(player.health==2)
+                {
+                    SDL_RenderCopy(renderer,health2Texture,nullptr,&healthPlayer1Rect);
+                }
+                    else if(player.health==1)
+                        SDL_RenderCopy(renderer,health3Texture,nullptr,&healthPlayer1Rect);
+                if(player2.health==3)
+                {
+                    SDL_RenderCopy(renderer,health1Texture,nullptr,&healthPlayer2Rect);
+                }
+                else if(player2.health==2)
+                {
+                    SDL_RenderCopy(renderer,health2Texture,nullptr,&healthPlayer2Rect);
+                }
+                    else if(player2.health==1)
+                        SDL_RenderCopy(renderer,health3Texture,nullptr,&healthPlayer2Rect);
             }
             SDL_Rect pauseRect={760,0,40,40};
             SDL_RenderCopy(renderer,pauseTexture,NULL,&pauseRect);
@@ -702,12 +733,37 @@ Game::Game() {
 
     Game::~Game() {
         SDL_DestroyTexture(startButtonTexture);
-        SDL_DestroyTexture(player2ButtonTexture);
-        SDL_DestroyTexture(player2Texture);
-        SDL_DestroyTexture(winTexture);
-        SDL_DestroyTexture(loseTexture);
-        SDL_DestroyTexture(playAgainText);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
+    SDL_DestroyTexture(continueButtonTexture);
+    SDL_DestroyTexture(player2ButtonTexture);
+    SDL_DestroyTexture(player2Texture);
+    SDL_DestroyTexture(winTexture);
+    SDL_DestroyTexture(loseTexture);
+    SDL_DestroyTexture(playAgainText);
+    SDL_DestroyTexture(health1Texture);
+    SDL_DestroyTexture(health2Texture);
+    SDL_DestroyTexture(health3Texture);
+    SDL_DestroyTexture(win1Texture);
+    SDL_DestroyTexture(win2Texture);
+    SDL_DestroyTexture(playerTexture);
+    SDL_DestroyTexture(enemyTexture);
+    SDL_DestroyTexture(bulletTexture);
+    SDL_DestroyTexture(wallTexture);
+    SDL_DestroyTexture(wall2Texture);
+    SDL_DestroyTexture(wall3Texture);
+    SDL_DestroyTexture(pauseTexture);
+    // Giải phóng các texture nổ
+    for (int i = 0; i < 4; ++i) {
+        SDL_DestroyTexture(explosionTextures[i]);
+    }
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    Mix_FreeChunk(fireSound);
+    Mix_FreeChunk(explosionSound);
+    Mix_FreeMusic(winSound);
+    Mix_FreeMusic(loseSound);
+    TTF_CloseFont(font);
+    Mix_Quit();
+    IMG_Quit();
+    TTF_Quit();
+    SDL_Quit();
     }
