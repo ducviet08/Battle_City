@@ -19,7 +19,7 @@ extern int maxScore;
 extern vector<class EnemyTank> enemies;
 extern vector<class Explosion> explosions;
 extern int score;
-extern int timee; // Avoid name conflict with std::time
+extern double timee; // Avoid name conflict with std::time
 extern int level;
 extern bool gameStarted;
 extern bool inMenu;
@@ -201,9 +201,18 @@ Game::Game() {
     }
     SDL_Texture *Game::createTimeTexture()
     {
-        string timeText="Time: "+to_string((120000-timee)/1000);
+        string timeText="Time: "+to_string(int(60-timee));
         SDL_Color textColor={255,255,255,255};
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, timeText.c_str(), textColor);
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_FreeSurface(textSurface);
+        return textTexture;
+    }
+    SDL_Texture *Game::createMaxScoreTexture()
+    {
+        string maxScoreText="Max Score: "+to_string(maxScore);
+        SDL_Color textColor={255,255,255,255};
+        SDL_Surface* textSurface = TTF_RenderText_Solid(font, maxScoreText.c_str(), textColor);
         SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
         SDL_FreeSurface(textSurface);
         return textTexture;
@@ -284,6 +293,7 @@ Game::Game() {
                 if (mouseX >= startButtonRect.x && mouseX <= startButtonRect.x + startButtonRect.w &&
                     mouseY >= startButtonRect.y && mouseY <= startButtonRect.y + startButtonRect.h) {
                         gameStarted = true;
+                        LoadGame(*this,"save.txt");
                         walls.clear();
                         generateWalls();
                         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
@@ -420,7 +430,8 @@ Game::Game() {
         SDL_RenderCopy(renderer, instructionButtonTexture, NULL, &instructionButtonRect);
             // Hiển thị hướng dẫn nếu nút hướng dẫn được nhấp
             if (showInstructions) {
-                SDL_Rect instructionTextRect = {800 / 2 - 300, 600 / 2 + 150, 600, 80};
+                SDL_Rect instructionTextRect = {800 / 2 - 300, 600 / 2 + 150,
+                0, 80};
                 SDL_RenderCopy(renderer, instructionTextTexture, NULL, &instructionTextRect);
             }
             //SDL_Rect saveButtonRect = {800 / 2 - 50, 600 / 2 + 120, 100, 40}; // Điều chỉnh vị trí
@@ -428,6 +439,9 @@ Game::Game() {
         } else {
             SDL_Rect backgroundRect = {0, 0, 800-40, 600};
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"background.jpg");
+            SDL_Texture* boardText=IMG_LoadTexture(renderer,"board.jpg");
+            SDL_Rect boardRect = {800-40, 0,40*5, 600};
+            SDL_RenderCopy(renderer,boardText,NULL,&boardRect);
             //SDL_RenderFillRect(renderer, &backgroundRect);
             SDL_RenderCopy(renderer,menuText,NULL,&backgroundRect);
             for (int i = 0; i < walls.size(); i++)
@@ -443,10 +457,10 @@ Game::Game() {
             for (auto &explosion : explosions) {
                 explosion.render(renderer, explosionTextures);
             }
-                SDL_Texture* scoreTexture = createScoreTexture();
+        SDL_Texture* scoreTexture = createScoreTexture();
         if (scoreTexture) {
             // Tạo rect để định vị texture
-            SDL_Rect scoreRect = {780, 100, 160,120 }; // Vị trí ở góc trên bên trái
+            SDL_Rect scoreRect = {780, 80, 160,120 }; // Vị trí ở góc trên bên trái
 
             // Vẽ texture điểm số
             SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
@@ -457,13 +471,24 @@ Game::Game() {
         SDL_Texture* timeTexture = createTimeTexture();
         if (timeTexture) {
             // Tạo rect để định vị texture
-            SDL_Rect timeRect = {780, 300, 160,120 }; // Vị trí ở góc trên bên trái
+            SDL_Rect timeRect = {780, 280, 160,120 }; // Vị trí ở góc trên bên trái
 
             // Vẽ texture điểm số
             SDL_RenderCopy(renderer, timeTexture, NULL, &timeRect);
 
             // Giải phóng texture sau khi sử dụng
             SDL_DestroyTexture(timeTexture);
+        }
+        SDL_Texture* maxScoreTexture = createMaxScoreTexture();
+        if (maxScoreTexture) {
+            // Tạo rect để định vị texture
+            SDL_Rect maxScoreRect = {780, 480, 160,120 }; // Vị trí ở góc trên bên trái
+
+            // Vẽ texture điểm số
+            SDL_RenderCopy(renderer, maxScoreTexture, NULL, &maxScoreRect);
+
+            // Giải phóng texture sau khi sử dụng
+            SDL_DestroyTexture(maxScoreTexture);
         }
         }
 
@@ -566,16 +591,10 @@ Game::Game() {
                     }
                 }
             }
-             if(score==18){
-                        Mix_PlayMusic( winSound,0);
+              if(timee>=60){
                         gameOver = true;
                         gameWon = true;
-                        return;
-                    }
-              if(timee>=120000){
-                        gameOver = true;
-                        gameWon = false;
-                        Mix_PlayMusic( loseSound, 0);
+                        Mix_PlayMusic( winSound, 0);
                         walls.clear();
                         generateWalls();
                         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
@@ -584,6 +603,7 @@ Game::Game() {
                         score = 0;
                         timee = 0;
                         level = 1;
+                        maxScore=max(score,maxScore);
                         SaveGame(*this,"save.txt");
                         return;
                     }
@@ -596,7 +616,6 @@ Game::Game() {
             // Loại bỏ các vụ nổ đã hoàn thành
             explosions.erase(std::remove_if(explosions.begin(), explosions.end(),
                                              [](Explosion &e) { return !e.active; }), explosions.end());
-            maxScore=max(score,maxScore);
 
         }
     }
@@ -606,8 +625,10 @@ Game::Game() {
             Events();
             update();
             render();
-            SDL_Delay(10);
-            if(!inMenu&&!gameOver) timee+=15;
+            SDL_Delay(15);
+            //for (auto &enemy : enemies)
+            //cout<<enemy.bullets.size()<<'\n';
+            if(!inMenu&&!gameOver) timee+=0.015;
         }
 
     }
