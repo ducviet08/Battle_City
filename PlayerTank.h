@@ -11,6 +11,7 @@ class PlayerTank {
 public:
     int x, y;
     int dirX, dirY;
+    int health;
     SDL_Rect rect;
     std::vector<Bullet> bullets;
     int cooldown;
