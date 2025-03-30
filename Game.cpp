@@ -15,6 +15,7 @@ extern bool running;
 extern vector<class Wall> walls;
 
 extern int enemyNumber;
+extern bool gamePlayer1;
 extern int maxScore;
 extern vector<class EnemyTank> enemies;
 extern vector<class Explosion> explosions;
@@ -24,18 +25,19 @@ extern int level;
 extern bool gameStarted;
 extern bool inMenu;
 extern SDL_Texture* startButtonTexture;
-extern SDL_Texture* instructionButtonTexture;
-extern SDL_Texture* instructionTextTexture;
+extern SDL_Texture* player2ButtonTexture;
 extern SDL_Texture* continueButtonTexture;
 extern SDL_Texture* pauseTexture;
-extern bool showInstructions;
 //SDL_Texture* saveButtonTexture = nullptr;
 extern bool gameOver;
 extern bool gameWon;
+extern SDL_Texture* win1Texture;
+extern SDL_Texture* win2Texture;
 extern SDL_Texture* winTexture;
 extern SDL_Texture* loseTexture;
 extern SDL_Texture* playAgainText;
 extern SDL_Texture *playerTexture;
+extern SDL_Texture *player2Texture;
 extern SDL_Texture *enemyTexture;
 extern SDL_Texture *bulletTexture;
 extern SDL_Texture *wallTexture;
@@ -54,6 +56,7 @@ extern vector<int> wall2y;
 extern vector<int> wall3x;
 extern vector<int> wall3y;
 extern PlayerTank player;
+extern PlayerTank player2;
 
 void Game::generateWalls() {
     for (int i = 0; i < wall1x.size(); i++)
@@ -113,6 +116,9 @@ Game::Game() {
         if (!playerTexture) {
             cerr << "loi";
         }
+        win1Texture=IMG_LoadTexture(renderer,"win1.png");
+        win2Texture=IMG_LoadTexture(renderer,"win2.png");
+        player2Texture= IMG_LoadTexture(renderer,"enemyTank.png");
         enemyTexture = IMG_LoadTexture(renderer, "enemyTank.png");
         if (!enemyTexture) {
             cerr << "loi";
@@ -146,25 +152,21 @@ Game::Game() {
             }
         }
         gameStarted = false;
+        game2player=0;
 
          // Tạo texture cho nút Start
         SDL_Color textColor = {255, 255, 255, 255};
-        SDL_Surface* startSurface = TTF_RenderText_Solid(font, "Start Game", textColor);
+        SDL_Surface* startSurface = TTF_RenderText_Solid(font, "1 Player", textColor);
         startButtonTexture = SDL_CreateTextureFromSurface(renderer, startSurface);
         SDL_FreeSurface(startSurface);
         SDL_Surface* continueSurface = TTF_RenderText_Solid(font, "Continue", textColor);
         continueButtonTexture = SDL_CreateTextureFromSurface(renderer, continueSurface);
         SDL_FreeSurface(continueSurface);
 
-        // Tạo texture cho nút Instructions
-        SDL_Surface* instructionSurface = TTF_RenderText_Solid(font, "Instructions", textColor);
-        instructionButtonTexture = SDL_CreateTextureFromSurface(renderer, instructionSurface);
-        SDL_FreeSurface(instructionSurface);
-
-        // Tạo texture cho hướng dẫn
-        SDL_Surface* instructionsTextSurface = TTF_RenderText_Blended_Wrapped(font, "Su dung cuc nut huong de di chuyen. An space đe ban. Ton tai va co gang huy diet tat ca xe tang dich trong 3 man trong 2 phut!", textColor, 600);
-        instructionTextTexture = SDL_CreateTextureFromSurface(renderer, instructionsTextSurface);
-        SDL_FreeSurface(instructionsTextSurface);
+        // Tạo texture cho nút instructions
+        SDL_Surface* player2Surface = TTF_RenderText_Solid(font, "2 Player", textColor);
+        player2ButtonTexture = SDL_CreateTextureFromSurface(renderer, player2Surface);
+        SDL_FreeSurface(player2Surface);
 
         //Create Win & Lose Texture
         winTexture=IMG_LoadTexture(renderer,"win.png");
@@ -183,12 +185,12 @@ Game::Game() {
         }
         winSound=Mix_LoadMUS("win.mp3");
         loseSound=Mix_LoadMUS("lose.mp3");
-        SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Play Again!",textColor);
+        SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Menu",textColor);
         playAgainText = SDL_CreateTextureFromSurface(renderer,playAgainSurface);
         SDL_FreeSurface(playAgainSurface);
         generateWalls();
         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
-        spawnEnemies();
+        player2= PlayerTank((800 / 40 - 1) / 2 * 40, 0);
     }
     SDL_Texture *Game::createScoreTexture()
     {
@@ -278,7 +280,8 @@ Game::Game() {
                         mouseY >= playAgainRect.y && mouseY <= playAgainRect.y + playAgainRect.h) {
                         // Reset game state
                         gameOver = false; // Đặt lại trạng thái gameOver
-                        inMenu = false;
+                        inMenu = true;
+                        game2player=false;
                     }
                 }
                 return; // Không xử lý các sự kiện khác khi trò chơi kết thúc
@@ -302,8 +305,8 @@ Game::Game() {
                         score = 0;
                         timee = 0;
                         level = 1;
-                    inMenu = false; // Bắt đầu trò chơi
-                     showInstructions = false;
+                    inMenu = false;
+                    game2player =false;
                 }
                  SDL_Rect continueButtonRect = {800 / 2 - 50, 600 / 2 , 100, 40};
                  if (mouseX >= continueButtonRect.x && mouseX <= continueButtonRect.x + continueButtonRect.w &&
@@ -312,7 +315,7 @@ Game::Game() {
                     if (LoadGame(*this, "save.txt")) {
                         // If the game loads successfully, set inMenu to false
                         inMenu = false;
-                        showInstructions = false;
+                       game2player=0;
                     } else {
                         // Handle the case where loading the game fails.  For example:
                         cout << "No saved game found, starting a new game." << endl;
@@ -320,13 +323,18 @@ Game::Game() {
                 }
 
                 // Kiểm tra xem chuột có nhấp vào nút Instructions không
-                SDL_Rect instructionButtonRect = {800 / 2 - 50, 600 / 2 + 60, 100, 40};
-                if (mouseX >= instructionButtonRect.x && mouseX <= instructionButtonRect.x + instructionButtonRect.w &&
-                    mouseY >= instructionButtonRect.y && mouseY <= instructionButtonRect.y + instructionButtonRect.h) {
-                     showInstructions = true;
-                }
+                SDL_Rect player2ButtonRect = {800 / 2 - 50, 600 / 2 + 60, 100, 40};
+                if (mouseX >= player2ButtonRect.x && mouseX <= player2ButtonRect.x + player2ButtonRect.w &&
+                    mouseY >= player2ButtonRect.y && mouseY <= player2ButtonRect.y + player2ButtonRect.h) {
                    SDL_Rect saveButtonRect = {800 / 2 - 50, 600 / 2 + 120, 100, 40};
-
+                   gameStarted=true;
+                   inMenu=false;
+                   game2player=true;
+                   player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
+                   player2= PlayerTank((800 / 40 - 1) / 2 * 40, 0);
+                   player.health=3;
+                   player2.health=3;
+                   }
             }
         }
         else
@@ -338,7 +346,6 @@ Game::Game() {
                         mouseY >= pauseButtonRect.y && mouseY <= pauseButtonRect.y + pauseButtonRect.h) {
                             SaveGame(*this, "save.txt");
                     inMenu = true; // Trở về menu
-                     showInstructions = false;
                 }
             }
         }
@@ -362,12 +369,34 @@ Game::Game() {
                 player.dirY = 0;
                 player.move(4, 0, walls);
             }
-            if (keystate[SDL_SCANCODE_SPACE]) {
+            if (keystate[SDL_SCANCODE_RETURN]) {
                 player.shoot();
+            }
+            if(game2player)
+            {
+                if (keystate[SDL_SCANCODE_W]) {
+                player2.dirX = 0;
+                player2.dirY = -1;
+                player2.move(0, -4, walls);
+            } else if (keystate[SDL_SCANCODE_S]) {
+                player2.dirX = 0;
+                player2.dirY = 1;
+                player2.move(0, 4, walls);
+            } else if (keystate[SDL_SCANCODE_A]) {
+                player2.dirX = -1;
+                player2.dirY = 0;
+                player2.move(-4, 0, walls);
+            } else if (keystate[SDL_SCANCODE_D]) {
+                player2.dirX = 1;
+                player2.dirY = 0;
+                player2.move(4, 0, walls);
+            }
+            if (keystate[SDL_SCANCODE_SPACE]) {
+                player2.shoot();
+            }
             }
         }
 }
-
     void Game::spawnEnemies() {
         enemies.clear();
         for (int i = 0; i < enemyNumber; ++i) {
@@ -400,12 +429,21 @@ Game::Game() {
             //Vẽ background sau game
             SDL_SetRenderDrawColor(renderer,0,0,0,255);
             SDL_Rect backgroundEndGame={0,0,800,600};
+            if(game2player)
+            {
+                if (gamePlayer1) {
+                SDL_RenderCopy(renderer,win1Texture,NULL,&backgroundEndGame);
+            } else {
+                SDL_RenderCopy(renderer,win2Texture,NULL,&backgroundEndGame);
+            }
+
+            }
+            else {
             if (gameWon) {
                 SDL_RenderCopy(renderer,winTexture,NULL,&backgroundEndGame);
-                SDL_Rect scoreEndRect = {800 / 2 - 50, 600 / 2 - 20, 100, 40};
             } else {
                 SDL_RenderCopy(renderer,loseTexture,NULL,&backgroundEndGame);
-                SDL_Rect scoreEndRect = {800 / 2 - 50, 600 / 2 - 20, 100, 40};
+            }
             }
 
             SDL_Rect playAgainRect = {800 / 2 - 50, 600 / 2 + 160, 100, 40};
@@ -422,20 +460,12 @@ Game::Game() {
         SDL_RenderCopy(renderer, startButtonTexture, NULL, &startButtonRect);
 
         // Vẽ nút Continue
-        SDL_Rect continueButtonRect = {800 / 2 - 50, 600 / 2 , 100, 40}; // vị trí giữa startButtonRect và instructionButtonRect
+        SDL_Rect continueButtonRect = {800 / 2 - 50, 600 / 2 , 100, 40};
         SDL_RenderCopy(renderer, continueButtonTexture, NULL, &continueButtonRect);
 
         // Vẽ nút Instructions
-        SDL_Rect instructionButtonRect = {800 / 2 - 50, 600 / 2 + 60, 100, 40};
-        SDL_RenderCopy(renderer, instructionButtonTexture, NULL, &instructionButtonRect);
-            // Hiển thị hướng dẫn nếu nút hướng dẫn được nhấp
-            if (showInstructions) {
-                SDL_Rect instructionTextRect = {800 / 2 - 300, 600 / 2 + 150,
-                0, 80};
-                SDL_RenderCopy(renderer, instructionTextTexture, NULL, &instructionTextRect);
-            }
-            //SDL_Rect saveButtonRect = {800 / 2 - 50, 600 / 2 + 120, 100, 40}; // Điều chỉnh vị trí
-             //SDL_RenderCopy(renderer, saveButtonTexture, NULL, &saveButtonRect);
+        SDL_Rect player2ButtonRect = {800 / 2 - 50, 600 / 2 + 60, 100, 40};
+        SDL_RenderCopy(renderer, player2ButtonTexture, NULL, &player2ButtonRect);
         } else {
             SDL_Rect backgroundRect = {0, 0, 800-40, 600};
             SDL_Texture* menuText=IMG_LoadTexture(renderer,"background.jpg");
@@ -447,8 +477,32 @@ Game::Game() {
             for (int i = 0; i < walls.size(); i++)
                 walls[i].render(renderer, wallTexture, wall2Texture, wall3Texture);
             player.render(renderer, playerTexture);
-            for (auto &enemy : enemies) {
+            if(!game2player){
+            for (auto &enemy : enemies)
                 enemy.render(renderer, enemyTexture);
+                SDL_Texture* scoreTexture = createScoreTexture();
+        if (scoreTexture) {
+            SDL_Rect scoreRect = {780, 80, 160,120 };
+            SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
+            SDL_DestroyTexture(scoreTexture);
+        }
+        SDL_Texture* timeTexture = createTimeTexture();
+        if (timeTexture) {
+            SDL_Rect timeRect = {780, 280, 160,120 }; // Vị trí ở góc trên bên trái
+            SDL_RenderCopy(renderer, timeTexture, NULL, &timeRect);
+            SDL_DestroyTexture(timeTexture);
+        }
+        SDL_Texture* maxScoreTexture = createMaxScoreTexture();
+        if (maxScoreTexture) {
+            SDL_Rect maxScoreRect = {780, 480, 160,120 }; // Vị trí ở góc trên bên trái
+            SDL_RenderCopy(renderer, maxScoreTexture, NULL, &maxScoreRect);
+            SDL_DestroyTexture(maxScoreTexture);
+        }
+
+            }
+            else
+            {
+                player2.render(renderer,player2Texture);
             }
             SDL_Rect pauseRect={760,0,40,40};
             SDL_RenderCopy(renderer,pauseTexture,NULL,&pauseRect);
@@ -457,39 +511,7 @@ Game::Game() {
             for (auto &explosion : explosions) {
                 explosion.render(renderer, explosionTextures);
             }
-        SDL_Texture* scoreTexture = createScoreTexture();
-        if (scoreTexture) {
-            // Tạo rect để định vị texture
-            SDL_Rect scoreRect = {780, 80, 160,120 }; // Vị trí ở góc trên bên trái
 
-            // Vẽ texture điểm số
-            SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
-
-            // Giải phóng texture sau khi sử dụng
-            SDL_DestroyTexture(scoreTexture);
-        }
-        SDL_Texture* timeTexture = createTimeTexture();
-        if (timeTexture) {
-            // Tạo rect để định vị texture
-            SDL_Rect timeRect = {780, 280, 160,120 }; // Vị trí ở góc trên bên trái
-
-            // Vẽ texture điểm số
-            SDL_RenderCopy(renderer, timeTexture, NULL, &timeRect);
-
-            // Giải phóng texture sau khi sử dụng
-            SDL_DestroyTexture(timeTexture);
-        }
-        SDL_Texture* maxScoreTexture = createMaxScoreTexture();
-        if (maxScoreTexture) {
-            // Tạo rect để định vị texture
-            SDL_Rect maxScoreRect = {780, 480, 160,120 }; // Vị trí ở góc trên bên trái
-
-            // Vẽ texture điểm số
-            SDL_RenderCopy(renderer, maxScoreTexture, NULL, &maxScoreRect);
-
-            // Giải phóng texture sau khi sử dụng
-            SDL_DestroyTexture(maxScoreTexture);
-        }
         }
 
         SDL_RenderPresent(renderer);
@@ -497,18 +519,15 @@ Game::Game() {
 
     void Game::update() {
         if (!inMenu && !gameOver) {
-            player.updateBullets();
-            updateEnemyTanks();
-            player.cooldown-=15;
-            for (auto &enemy : enemies) {
+                if(!game2player){
+                    updateEnemyTanks();
+                    for (auto &enemy : enemies) {
                 enemy.move(walls,level);
                 enemy.updateBullets();
                 if (rand() % 100 < (2+level)) {
                     enemy.shoot(level);
                 }
             }
-
-            // Xử lý va chạm đạn của địch với tường
             for (auto &enemy : enemies) {
                 for (auto &bullet : enemy.bullets) {
                     for (auto &wall : walls) {
@@ -525,24 +544,6 @@ Game::Game() {
                     }
                 }
             }
-
-            // Xử lý va chạm đạn của người chơi với tường
-            for (auto &bullet : player.bullets) {
-                for (auto &wall : walls) {
-                    if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
-                        // Tạo hiệu ứng nổ tại vị trí va chạm
-                        explosions.push_back(Explosion(bullet.x, bullet.y));
-                        Mix_PlayChannel(-1, explosionSound, 0);
-
-                        wall.health--;
-                        if (wall.health == 0)
-                            wall.active = false;
-                        bullet.active = false;
-                    }
-                }
-            }
-
-            // Xử lý va chạm đạn của người chơi với địch
             for (auto &bullet : player.bullets) {
                 for (auto &enemy : enemies) {
                     if (enemy.active && SDL_HasIntersection(&bullet.rect, &enemy.rect)) {
@@ -559,7 +560,6 @@ Game::Game() {
                     }
                 }
             }
-
             enemies.erase(std::remove_if(enemies.begin(), enemies.end(),
                                          [](EnemyTank &e) { return !e.active; }), enemies.end());
 
@@ -607,8 +607,76 @@ Game::Game() {
                         SaveGame(*this,"save.txt");
                         return;
                     }
+                }
+                else
+                {
 
-            // Cập nhật trạng thái các vụ nổ
+                    player2.updateBullets();
+                    player2.cooldown-=15;
+                    for (auto &bullet : player2.bullets) {
+                for (auto &wall : walls) {
+                    if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
+                        // Tạo hiệu ứng nổ tại vị trí va chạm
+                        explosions.push_back(Explosion(bullet.x, bullet.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
+
+                        wall.health--;
+                        if (wall.health == 0)
+                            wall.active = false;
+                        bullet.active = false;
+                    }
+                }
+            }
+            for (auto &bullet : player2.bullets) {
+                    if (SDL_HasIntersection(&bullet.rect, &player.rect)) {
+                        // Tạo hiệu ứng nổ tại vị trí va chạm
+                        explosions.push_back(Explosion(bullet.x, bullet.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
+                        player.health--;
+                        if(player.health==0)
+                        {
+                            gameOver=true;
+                            gamePlayer1=false;
+                            Mix_PlayMusic( winSound, 0);
+                        }
+                        bullet.active = false;
+                    }
+            }
+            for (auto &bullet : player.bullets) {
+                    if (SDL_HasIntersection(&bullet.rect, &player2.rect)) {
+                        // Tạo hiệu ứng nổ tại vị trí va chạm
+                        explosions.push_back(Explosion(bullet.x, bullet.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
+                        player2.health--;
+                        if(player2.health==0)
+                        {
+                            gameOver=true;
+                            gamePlayer1=true;
+                            Mix_PlayMusic( winSound, 0);
+                        }
+                        bullet.active = false;
+                    }
+            }
+                }
+            player.updateBullets();
+
+            player.cooldown-=15;
+
+            for (auto &bullet : player.bullets) {
+                for (auto &wall : walls) {
+                    if (wall.active && SDL_HasIntersection(&bullet.rect, &wall.rect)) {
+                        // Tạo hiệu ứng nổ tại vị trí va chạm
+                        explosions.push_back(Explosion(bullet.x, bullet.y));
+                        Mix_PlayChannel(-1, explosionSound, 0);
+
+                        wall.health--;
+                        if (wall.health == 0)
+                            wall.active = false;
+                        bullet.active = false;
+                    }
+                }
+            }
+
             for (auto &explosion : explosions) {
                 explosion.update();
             }
@@ -626,8 +694,7 @@ Game::Game() {
             update();
             render();
             SDL_Delay(15);
-            //for (auto &enemy : enemies)
-            //cout<<enemy.bullets.size()<<'\n';
+
             if(!inMenu&&!gameOver) timee+=0.015;
         }
 
@@ -635,8 +702,8 @@ Game::Game() {
 
     Game::~Game() {
         SDL_DestroyTexture(startButtonTexture);
-        SDL_DestroyTexture(instructionButtonTexture);
-        SDL_DestroyTexture(instructionTextTexture);
+        SDL_DestroyTexture(player2ButtonTexture);
+        SDL_DestroyTexture(player2Texture);
         SDL_DestroyTexture(winTexture);
         SDL_DestroyTexture(loseTexture);
         SDL_DestroyTexture(playAgainText);
