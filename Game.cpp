@@ -273,7 +273,7 @@ Game::Game() {
                     SDL_GetMouseState(&mouseX, &mouseY);
 
                     // Kiểm tra xem chuột có nhấp vào nút Play Again không
-                    SDL_Rect playAgainRect = {800 / 2 - 50, 600 / 2 + 40, 100, 40};
+                    SDL_Rect playAgainRect = {800 / 2 - 50, 600 / 2 +160, 100, 40};
                     if (mouseX >= playAgainRect.x && mouseX <= playAgainRect.x + playAgainRect.w &&
                         mouseY >= playAgainRect.y && mouseY <= playAgainRect.y + playAgainRect.h) {
                         // Reset game state
@@ -408,7 +408,7 @@ Game::Game() {
                 SDL_Rect scoreEndRect = {800 / 2 - 50, 600 / 2 - 20, 100, 40};
             }
 
-            SDL_Rect playAgainRect = {800 / 2 - 50, 600 / 2 + 40, 100, 40};
+            SDL_Rect playAgainRect = {800 / 2 - 50, 600 / 2 + 160, 100, 40};
             SDL_RenderCopy(renderer, playAgainText, NULL, &playAgainRect);
         }
         else if (inMenu) {
