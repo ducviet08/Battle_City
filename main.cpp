@@ -30,7 +30,7 @@ bool running = true;
 vector<class Wall> walls;
 
 int enemyNumber = 3;
-int maxScore=0;
+int maxScore;
 vector<class EnemyTank> enemies;
 vector<class Explosion> explosions;
 int score = 0;
