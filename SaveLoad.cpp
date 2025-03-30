@@ -10,7 +10,7 @@ using namespace std;
 bool SaveGame(const Game& game, const std::string& filename) {
     extern int maxScore;
     extern int score;
-    extern int timee;
+    extern double timee;
     extern int level;
     extern int enemyNumber;
     extern vector<class Wall> walls;
@@ -56,7 +56,7 @@ bool SaveGame(const Game& game, const std::string& filename) {
 bool LoadGame(Game& game, const std::string& filename) {
      extern int maxScore;
     extern int score;
-    extern int timee;
+    extern double timee;
     extern int level;
     extern int enemyNumber;
     extern vector<class Wall> walls;
