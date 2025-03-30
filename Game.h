@@ -27,6 +27,7 @@ private:
     void updateEnemyTanks();
     SDL_Texture *createScoreTexture();
     SDL_Texture *createTimeTexture();
+    SDL_Texture *createMaxScoreTexture();
 };
 
 #endif
