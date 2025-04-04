@@ -23,6 +23,9 @@ extern double timee; // Avoid name conflict with std::time
 extern int level;
 extern bool gameStarted;
 extern bool inMenu;
+extern SDL_Texture* menuText;
+extern SDL_Texture* backgroundText;
+extern SDL_Texture* boardText;
 extern SDL_Texture* startButtonTexture;
 extern SDL_Texture* player2ButtonTexture;
 extern SDL_Texture* continueButtonTexture;
@@ -188,6 +191,9 @@ Game::Game() {
         if (!explosionSound) {
         std::cerr << "Failed to load explosion sound: " << Mix_GetError() << std::endl;
         }
+        menuText=IMG_LoadTexture(renderer,"menu.png");
+        backgroundText=IMG_LoadTexture(renderer,"background.jpg");
+        boardText=IMG_LoadTexture(renderer,"board.jpg");
         winSound=Mix_LoadMUS("win.mp3");
         loseSound=Mix_LoadMUS("lose.mp3");
         SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Menu",textColor);
@@ -458,7 +464,7 @@ Game::Game() {
             // Vẽ background menu
             //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_Rect backgroundRect = {0, 0, 800+4*40, 600};
-            SDL_Texture* menuText=IMG_LoadTexture(renderer,"menu.png");
+
             //SDL_RenderFillRect(renderer, &backgroundRect);
             SDL_RenderCopy(renderer,menuText,NULL,&backgroundRect);
              SDL_Rect startButtonRect = {800 / 2 - 50, 600 / 2 - 60, 100, 40};
@@ -473,12 +479,10 @@ Game::Game() {
         SDL_RenderCopy(renderer, player2ButtonTexture, NULL, &player2ButtonRect);
         } else {
             SDL_Rect backgroundRect = {0, 0, 800-40, 600};
-            SDL_Texture* menuText=IMG_LoadTexture(renderer,"background.jpg");
-            SDL_Texture* boardText=IMG_LoadTexture(renderer,"board.jpg");
             SDL_Rect boardRect = {800-40, 0,40*5, 600};
             SDL_RenderCopy(renderer,boardText,NULL,&boardRect);
             //SDL_RenderFillRect(renderer, &backgroundRect);
-            SDL_RenderCopy(renderer,menuText,NULL,&backgroundRect);
+            SDL_RenderCopy(renderer,backgroundText,NULL,&backgroundRect);
             for (int i = 0; i < walls.size(); i++)
                 walls[i].render(renderer, wallTexture, wall2Texture, wall3Texture);
             player.render(renderer, playerTexture);
