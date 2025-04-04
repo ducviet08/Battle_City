@@ -19,7 +19,7 @@ extern int maxScore;
 extern vector<class EnemyTank> enemies;
 extern vector<class Explosion> explosions;
 extern int score;
-extern double timee; // Avoid name conflict with std::time
+extern double timee;
 extern int level;
 extern bool gameStarted;
 extern bool inMenu;
@@ -62,7 +62,7 @@ extern vector<int> wall3x;
 extern vector<int> wall3y;
 extern PlayerTank player;
 extern PlayerTank player2;
-
+//Hàm khởi tạo tường
 void Game::generateWalls() {
     for (int i = 0; i < wall1x.size(); i++)
         walls.push_back(Wall(wall1x[i] * 10, wall1y[i] * 10, 0));
@@ -178,6 +178,7 @@ Game::Game() {
         SDL_FreeSurface(player2Surface);
 
         //Create Win & Lose Texture
+        trapTexture = IMG_LoadTexture(renderer, "trap.png");
         winTexture=IMG_LoadTexture(renderer,"win.png");
         loseTexture=IMG_LoadTexture(renderer,"lose.png");
         SDL_Surface* saveSurface = TTF_RenderText_Solid(font, "Save Game", textColor);
@@ -204,6 +205,14 @@ Game::Game() {
         healthPackSpawnTimer = 0.0;     // Bắt đầu đếm thời gian
         healthPackRect.w = 40; // Đặt kích thước
          healthPackRect.h = 40;
+         trapActive = false;             // Ban đầu không có bẫy
+         trapSpawnTimer = 0.0;           // Bắt đầu đếm thời gian
+         trapRect.w = TRAP_SIZE;         // Đặt kích thước
+         trapRect.h = TRAP_SIZE;
+         player1Stunned = false;
+         player1StunTimer = 0.0;
+         player2Stunned = false;
+         player2StunTimer = 0.0;
         generateWalls();
         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
         player2= PlayerTank((800 / 40 - 1) / 2 * 40, 0);
@@ -235,9 +244,9 @@ Game::Game() {
         SDL_FreeSurface(textSurface);
         return textTexture;
     }
+    //Cập nhật hướng, di chuyển và bắn đạn của tank địch
     void Game::updateEnemyTanks() {
         for (auto &enemy : enemies) {
-            //enemy.changeDirection(walls);
             enemy.directionChangeTimer++;
             if(enemy.directionChangeTimer==130)
             {
@@ -368,6 +377,7 @@ Game::Game() {
     }
     // Di chuyển dựa trên trạng thái phím
     if (!inMenu && !gameOver) {
+            if (!player1Stunned){
             if (keystate[SDL_SCANCODE_UP]) {
                 player.dirX = 0;
                 player.dirY = -1;
@@ -388,7 +398,9 @@ Game::Game() {
             if (keystate[SDL_SCANCODE_RETURN]) {
                 player.shoot();
             }
+            }
             if(game2player)
+            if (!player2Stunned){
             {
                 if (keystate[SDL_SCANCODE_W]) {
                 player2.dirX = 0;
@@ -409,6 +421,7 @@ Game::Game() {
             }
             if (keystate[SDL_SCANCODE_SPACE]) {
                 player2.shoot();
+            }
             }
             }
         }
@@ -444,10 +457,6 @@ void Game::spawnHealthPack() {
                 break;
             }
         }
-        // (Tùy chọn) Kiểm tra va chạm với người chơi nếu không muốn spawn ngay trên người chơi
-        // if (SDL_HasIntersection(&checkRect, &player.rect) || SDL_HasIntersection(&checkRect, &player2.rect)) {
-        //     validPosition = false;
-        // }
     }
 
     if (validPosition) {
@@ -458,12 +467,10 @@ void Game::spawnHealthPack() {
     } else {
          std::cout << "Could not find valid spawn position for health pack after " << attempts << " attempts." << std::endl; // Debug
          // Nếu không tìm được vị trí, sẽ thử lại sau 10s nữa
-         healthPackSpawnTimer = 0; // Reset timer để thử lại ngay sau đó hoặc chờ tiếp interval? -> Chờ tiếp interval hợp lý hơn.
-         // healthPackSpawnTimer = HEALTH_PACK_SPAWN_INTERVAL - 1.0; // Thử lại sớm hơn 1 chút?
+         healthPackSpawnTimer = 0;
     }
 
 }
-// Game.cpp
 
 void Game::updateHealthPack(double dt) {
     if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
@@ -496,6 +503,114 @@ void Game::updateHealthPack(double dt) {
             //healthPackSpawnTimer = 0.0;                      // Bắt đầu đếm lại từ đầu
             std::cout << "Player 2 collected health pack! Health: " << player2.health << std::endl; // Debug
             // Mix_PlayChannel(-1, healthPickupSound, 0); // Thêm âm thanh nếu có
+        }
+    }
+}
+// Game.cpp
+
+void Game::spawnTrap() {
+    if (trapActive) return; // Chỉ spawn nếu chưa có bẫy nào đang active
+
+    bool validPosition = false;
+    int spawnX, spawnY;
+    int maxSpawnX = 800 - 40 - TRAP_SIZE; // Giới hạn trong khu vực chơi
+    int maxSpawnY = 600 - TRAP_SIZE;
+
+    SDL_Rect checkRect;
+    checkRect.w = TRAP_SIZE;
+    checkRect.h = TRAP_SIZE;
+
+    int attempts = 0;
+    while (!validPosition && attempts < 100) {
+        attempts++;
+        spawnX = rand() % maxSpawnX;
+        spawnY = rand() % maxSpawnY;
+
+        checkRect.x = spawnX;
+        checkRect.y = spawnY;
+        validPosition = true;
+
+        // Kiểm tra va chạm với tường
+        for (const auto& wall : walls) {
+            if (wall.active && SDL_HasIntersection(&checkRect, &wall.rect)) {
+                validPosition = false;
+                break;
+            }
+        }
+    }
+
+    if (validPosition) {
+        trapRect.x = spawnX;
+        trapRect.y = spawnY;
+        trapActive = true; // Đặt bẫy (vẫn ẩn)
+        trapSpawnTimer = 0.0; // Reset timer để đếm cho lần spawn tiếp theo
+        std::cout << "Trap placed (hidden) at (" << spawnX << ", " << spawnY << ")" << std::endl; // Debug
+    } else {
+         std::cout << "Could not find valid spawn position for trap." << std::endl; // Debug
+         // Không tìm được vị trí, sẽ thử lại sau interval nữa
+    }
+}
+// Game.cpp
+
+void Game::applyStun(PlayerTank& targetPlayer, bool& stunFlag, double& stunTimer) {
+    if (stunFlag) return; // Đã bị stun rồi thì thôi
+
+    stunFlag = true;
+    stunTimer = STUN_DURATION;
+    std::cout << "Player stunned!" << std::endl; // Debug
+    // Mix_PlayChannel(-1, trapTriggerSound, 0); // Thêm âm thanh nếu có
+}
+// Game.cpp
+
+void Game::updateTrapsAndStun(double dt) {
+    if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
+
+    // --- Xử lý Spawn Bẫy ---
+    if (!trapActive) {
+        trapSpawnTimer += dt;
+        if (trapSpawnTimer >= TRAP_SPAWN_INTERVAL) {
+             // Đảm bảo timer không tăng quá nhiều nếu có lag
+             trapSpawnTimer = fmod(trapSpawnTimer, TRAP_SPAWN_INTERVAL);
+            spawnTrap(); // Thử đặt bẫy mới
+        }
+    }
+
+    // --- Xử lý Kích Hoạt Bẫy ---
+    if (trapActive) {
+        // Kiểm tra va chạm với người chơi 1 (nếu chưa bị stun)
+        if (!player1Stunned && SDL_HasIntersection(&trapRect, &player.rect)) {
+            applyStun(player, player1Stunned, player1StunTimer);
+            trapActive = false; // Bẫy đã bị kích hoạt và biến mất
+            trapSpawnTimer = 0.0; // Bắt đầu đếm lại ngay cho bẫy tiếp theo
+             std::cout << "Player 1 triggered trap!" << std::endl; // Debug
+            // Không return, cả 2 có thể bị stun cùng lúc nếu đứng chồng lên nhau
+        }
+
+        // Kiểm tra va chạm với người chơi 2 (nếu chưa bị stun và bẫy VẪN còn active)
+        // Điều này có nghĩa là nếu cả 2 cùng chạm vào, cả 2 cùng bị stun
+        if (trapActive && !player2Stunned && SDL_HasIntersection(&trapRect, &player2.rect)) {
+             applyStun(player2, player2Stunned, player2StunTimer);
+             trapActive = false; // Bẫy đã bị kích hoạt và biến mất
+             trapSpawnTimer = 0.0; // Bắt đầu đếm lại ngay cho bẫy tiếp theo
+             std::cout << "Player 2 triggered trap!" << std::endl; // Debug
+        }
+    }
+
+    // --- Cập nhật Thời gian Stun ---
+    if (player1Stunned) {
+        player1StunTimer -= dt;
+        if (player1StunTimer <= 0.0) {
+            player1Stunned = false;
+            player1StunTimer = 0.0;
+             std::cout << "Player 1 stun ended." << std::endl; // Debug
+        }
+    }
+    if (player2Stunned) {
+        player2StunTimer -= dt;
+        if (player2StunTimer <= 0.0) {
+            player2Stunned = false;
+            player2StunTimer = 0.0;
+            std::cout << "Player 2 stun ended." << std::endl; // Debug
         }
     }
 }
@@ -632,6 +747,15 @@ void Game::updateHealthPack(double dt) {
                 }
                     else if(player2.health==1)
                         SDL_RenderCopy(renderer,health3Texture,nullptr,&healthPlayer2Rect);
+                        if (player1Stunned) {
+             SDL_Rect stunRect = {player.x,player.y,40,20}; // Vẽ tại vị trí player
+             // Có thể điều chỉnh vị trí/kích thước hiệu ứng
+             SDL_RenderCopy(renderer, trapTexture, NULL, &stunRect);
+        }
+        if (player2Stunned) {
+                 SDL_Rect stunRect = {player2.x,player2.y,40,20};
+                 SDL_RenderCopy(renderer, trapTexture, NULL, &stunRect);
+             }
             }
             SDL_Rect pauseRect={760,0,40,40};
             SDL_RenderCopy(renderer,pauseTexture,NULL,&pauseRect);
@@ -787,6 +911,7 @@ void Game::updateHealthPack(double dt) {
                     }
             }
             updateHealthPack(0.015);
+            updateTrapsAndStun(0.015);
                 }
             player.updateBullets();
 
@@ -850,6 +975,8 @@ void Game::updateHealthPack(double dt) {
     SDL_DestroyTexture(wall2Texture);
     SDL_DestroyTexture(wall3Texture);
     SDL_DestroyTexture(pauseTexture);
+    SDL_DestroyTexture(trapTexture);
+    SDL_DestroyTexture(healthPackTexture);
     // Giải phóng các texture nổ
     for (int i = 0; i < 4; ++i) {
         SDL_DestroyTexture(explosionTextures[i]);
