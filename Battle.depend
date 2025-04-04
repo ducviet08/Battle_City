@@ -29,7 +29,7 @@
 1743255529 d:\c++\game\demoo\battle\explosion.h
 	<SDL.h>
 
-1743777781 source:d:\c++\game\demoo\battle\game.cpp
+1743780288 source:d:\c++\game\demoo\battle\game.cpp
 	"Game.h"
 	<iostream>
 	<algorithm>
@@ -39,7 +39,7 @@
 	"SaveLoad.h"
 	<sstream>
 
-1743326979 d:\c++\game\demoo\battle\game.h
+1743779905 d:\c++\game\demoo\battle\game.h
 	<SDL.h>
 	<SDL_ttf.h>
 	<SDL_image.h>

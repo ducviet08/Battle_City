@@ -121,6 +121,7 @@ Game::Game() {
         if (!playerTexture) {
             cerr << "loi";
         }
+        healthPackTexture = IMG_LoadTexture(renderer, "health.png");
         win1Texture=IMG_LoadTexture(renderer,"win1.png");
         win2Texture=IMG_LoadTexture(renderer,"win2.png");
         player2Texture= IMG_LoadTexture(renderer,"enemyTank.png");
@@ -199,6 +200,10 @@ Game::Game() {
         SDL_Surface* playAgainSurface = TTF_RenderText_Solid(font,"Menu",textColor);
         playAgainText = SDL_CreateTextureFromSurface(renderer,playAgainSurface);
         SDL_FreeSurface(playAgainSurface);
+        healthPackActive = false;       // Ban đầu không có cục máu
+        healthPackSpawnTimer = 0.0;     // Bắt đầu đếm thời gian
+        healthPackRect.w = 40; // Đặt kích thước
+         healthPackRect.h = 40;
         generateWalls();
         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
         player2= PlayerTank((800 / 40 - 1) / 2 * 40, 0);
@@ -408,6 +413,92 @@ Game::Game() {
             }
         }
 }
+// Game.cpp
+
+void Game::spawnHealthPack() {
+    bool validPosition = false;
+    int spawnX, spawnY;
+    int maxSpawnX = 800 - 40 - HEALTH_PACK_SIZE; // Giới hạn trong khu vực chơi (trừ bảng điểm)
+    int maxSpawnY = 600 - HEALTH_PACK_SIZE;      // Giới hạn chiều cao
+
+    SDL_Rect checkRect;
+    checkRect.w = HEALTH_PACK_SIZE;
+    checkRect.h = HEALTH_PACK_SIZE;
+
+    int attempts = 0; // Giới hạn số lần thử để tránh vòng lặp vô hạn nếu map quá chật
+    while (!validPosition && attempts < 100) {
+        attempts++;
+        // Tạo vị trí ngẫu nhiên (có thể cần điều chỉnh để khớp lưới nếu muốn)
+        spawnX = rand() % maxSpawnX;
+        spawnY = rand() % maxSpawnY;
+
+        checkRect.x = spawnX;
+        checkRect.y = spawnY;
+
+        validPosition = true; // Giả sử vị trí hợp lệ ban đầu
+
+        // Kiểm tra va chạm với tường
+        for (const auto& wall : walls) {
+            if (wall.active && SDL_HasIntersection(&checkRect, &wall.rect)) {
+                validPosition = false; // Không hợp lệ nếu đè lên tường
+                break;
+            }
+        }
+        // (Tùy chọn) Kiểm tra va chạm với người chơi nếu không muốn spawn ngay trên người chơi
+        // if (SDL_HasIntersection(&checkRect, &player.rect) || SDL_HasIntersection(&checkRect, &player2.rect)) {
+        //     validPosition = false;
+        // }
+    }
+
+    if (validPosition) {
+        healthPackRect.x = spawnX;
+        healthPackRect.y = spawnY;
+        healthPackActive = true; // Kích hoạt cục máu
+        std::cout << "Health pack spawned at (" << spawnX << ", " << spawnY << ")" << std::endl; // Debug
+    } else {
+         std::cout << "Could not find valid spawn position for health pack after " << attempts << " attempts." << std::endl; // Debug
+         // Nếu không tìm được vị trí, sẽ thử lại sau 10s nữa
+         healthPackSpawnTimer = 0; // Reset timer để thử lại ngay sau đó hoặc chờ tiếp interval? -> Chờ tiếp interval hợp lý hơn.
+         // healthPackSpawnTimer = HEALTH_PACK_SPAWN_INTERVAL - 1.0; // Thử lại sớm hơn 1 chút?
+    }
+
+}
+// Game.cpp
+
+void Game::updateHealthPack(double dt) {
+    if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
+
+    // --- Xử lý Spawn ---
+    if (!healthPackActive) {
+        healthPackSpawnTimer += dt; // Tăng bộ đếm thời gian
+        if (healthPackSpawnTimer >= HEALTH_PACK_SPAWN_INTERVAL) {
+            healthPackSpawnTimer = 0.0; // Reset timer
+            spawnHealthPack();        // Thử spawn cục máu
+        }
+    }
+
+    // --- Xử lý Thu Thập ---
+    if (healthPackActive) {
+        // Kiểm tra va chạm với người chơi 1
+        if (SDL_HasIntersection(&healthPackRect, &player.rect)) {
+            player.health = std::min(3, player.health + 1); // Hồi máu, tối đa 3
+            healthPackActive = false;                       // Biến mất
+            //healthPackSpawnTimer = 0.0;                     // Bắt đầu đếm lại từ đầu
+            std::cout << "Player 1 collected health pack! Health: " << player.health << std::endl; // Debug
+            // Mix_PlayChannel(-1, healthPickupSound, 0); // Thêm âm thanh nếu có
+            return; // Chỉ một người chơi có thể nhặt trong một frame
+        }
+
+        // Kiểm tra va chạm với người chơi 2
+        if (SDL_HasIntersection(&healthPackRect, &player2.rect)) {
+            player2.health = std::min(3, player2.health + 1); // Hồi máu, tối đa 3
+            healthPackActive = false;                        // Biến mất
+            //healthPackSpawnTimer = 0.0;                      // Bắt đầu đếm lại từ đầu
+            std::cout << "Player 2 collected health pack! Health: " << player2.health << std::endl; // Debug
+            // Mix_PlayChannel(-1, healthPickupSound, 0); // Thêm âm thanh nếu có
+        }
+    }
+}
     void Game::spawnEnemies() {
         enemies.clear();
         for (int i = 0; i < enemyNumber; ++i) {
@@ -518,6 +609,9 @@ Game::Game() {
                 SDL_RenderCopy(renderer,player2Texture,nullptr,&imagePlayer2);
                 SDL_Rect healthPlayer1Rect={780,100,120,40};
                 SDL_Rect healthPlayer2Rect={780,300,120,40};
+                if (healthPackActive && healthPackTexture) {
+                SDL_RenderCopy(renderer, healthPackTexture, NULL, &healthPackRect);
+            }
                 if(player.health==3)
                 {
                     SDL_RenderCopy(renderer,health1Texture,nullptr,&healthPlayer1Rect);
@@ -692,6 +786,7 @@ Game::Game() {
                         bullet.active = false;
                     }
             }
+            updateHealthPack(0.015);
                 }
             player.updateBullets();
 
