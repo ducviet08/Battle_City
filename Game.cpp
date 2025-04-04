@@ -50,6 +50,8 @@ extern SDL_Texture *wall2Texture;
 extern SDL_Texture *wall3Texture;
 extern Mix_Chunk *fireSound;
 extern Mix_Chunk *explosionSound;
+extern Mix_Chunk *healthSound;
+extern Mix_Chunk *trapSound;
 extern Mix_Music *winSound;
 extern Mix_Music *loseSound;
 extern SDL_Texture *explosionTextures[4];
@@ -190,6 +192,8 @@ Game::Game() {
         }
 
         explosionSound = Mix_LoadWAV("explosion.mp3");
+        trapSound=Mix_LoadWAV("trap.mp3");
+        healthSound=Mix_LoadWAV("pop.mp3");
         if (!explosionSound) {
         std::cerr << "Failed to load explosion sound: " << Mix_GetError() << std::endl;
         }
@@ -488,6 +492,7 @@ void Game::updateHealthPack(double dt) {
     if (healthPackActive) {
         // Kiểm tra va chạm với người chơi 1
         if (SDL_HasIntersection(&healthPackRect, &player.rect)) {
+                Mix_PlayChannel(-1,healthSound,0);
             player.health = std::min(3, player.health + 1); // Hồi máu, tối đa 3
             healthPackActive = false;                       // Biến mất
             //healthPackSpawnTimer = 0.0;                     // Bắt đầu đếm lại từ đầu
@@ -498,6 +503,7 @@ void Game::updateHealthPack(double dt) {
 
         // Kiểm tra va chạm với người chơi 2
         if (SDL_HasIntersection(&healthPackRect, &player2.rect)) {
+            Mix_PlayChannel(-1,healthSound,0);
             player2.health = std::min(3, player2.health + 1); // Hồi máu, tối đa 3
             healthPackActive = false;                        // Biến mất
             //healthPackSpawnTimer = 0.0;                      // Bắt đầu đếm lại từ đầu
@@ -579,6 +585,7 @@ void Game::updateTrapsAndStun(double dt) {
     if (trapActive) {
         // Kiểm tra va chạm với người chơi 1 (nếu chưa bị stun)
         if (!player1Stunned && SDL_HasIntersection(&trapRect, &player.rect)) {
+                Mix_PlayChannel(-1,trapSound,0);
             applyStun(player, player1Stunned, player1StunTimer);
             trapActive = false; // Bẫy đã bị kích hoạt và biến mất
             trapSpawnTimer = 0.0; // Bắt đầu đếm lại ngay cho bẫy tiếp theo
@@ -589,6 +596,7 @@ void Game::updateTrapsAndStun(double dt) {
         // Kiểm tra va chạm với người chơi 2 (nếu chưa bị stun và bẫy VẪN còn active)
         // Điều này có nghĩa là nếu cả 2 cùng chạm vào, cả 2 cùng bị stun
         if (trapActive && !player2Stunned && SDL_HasIntersection(&trapRect, &player2.rect)) {
+                Mix_PlayChannel(-1,trapSound,0);
              applyStun(player2, player2Stunned, player2StunTimer);
              trapActive = false; // Bẫy đã bị kích hoạt và biến mất
              trapSpawnTimer = 0.0; // Bắt đầu đếm lại ngay cho bẫy tiếp theo
