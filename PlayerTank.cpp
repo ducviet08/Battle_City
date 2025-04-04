@@ -5,6 +5,7 @@
 #include<SDL_mixer.h>
 extern SDL_Texture *bulletTexture;
 PlayerTank::PlayerTank(int startX, int startY) {
+    bool protect=false;
     x = startX;
     y = startY;
     rect = {x, y, 40, 40};

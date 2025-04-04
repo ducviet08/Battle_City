@@ -55,7 +55,6 @@ extern Mix_Chunk *trapSound;
 extern Mix_Music *winSound;
 extern Mix_Music *loseSound;
 extern SDL_Texture *explosionTextures[4];
-
 extern vector<int> wall1x;
 extern vector<int> wall1y;
 extern vector<int> wall2x;
@@ -64,6 +63,10 @@ extern vector<int> wall3x;
 extern vector<int> wall3y;
 extern PlayerTank player;
 extern PlayerTank player2;
+extern SDL_Texture *shieldTexture; // Texture cho giáp
+extern bool player1ShieldActive;   // Trạng thái giáp
+extern double player1ShieldTimer;  // Thời gian còn lại của giáp
+
 //Hàm khởi tạo tường
 void Game::generateWalls() {
     for (int i = 0; i < wall1x.size(); i++)
@@ -123,6 +126,12 @@ Game::Game() {
         if (!playerTexture) {
             cerr << "loi";
         }
+        shieldTexture = IMG_LoadTexture(renderer, "protect.png");
+        if (!shieldTexture) {
+          cerr << "Failed to load shield texture: protect.png" << endl;
+         }
+         player1ShieldActive = false; // Ban đầu không có giáp
+         player1ShieldTimer = 0.0;
         healthPackTexture = IMG_LoadTexture(renderer, "health.png");
         win1Texture=IMG_LoadTexture(renderer,"win1.png");
         win2Texture=IMG_LoadTexture(renderer,"win2.png");
@@ -330,10 +339,10 @@ Game::Game() {
                         generateWalls();
                         player = PlayerTank((800 / 40 - 1) / 2 * 40, (600 / 40 - 2) * 40);
                         enemyNumber = 3;
-                        spawnEnemies();
                         score = 0;
                         timee = 0;
                         level = 1;
+                        spawnEnemies();
                     inMenu = false;
                     game2player =false;
                 }
@@ -569,7 +578,7 @@ void Game::applyStun(PlayerTank& targetPlayer, bool& stunFlag, double& stunTimer
 // Game.cpp
 
 void Game::updateTrapsAndStun(double dt) {
-    if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
+    //if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
 
     // --- Xử lý Spawn Bẫy ---
     if (!trapActive) {
@@ -721,7 +730,10 @@ void Game::updateTrapsAndStun(double dt) {
             SDL_RenderCopy(renderer, maxScoreTexture, NULL, &maxScoreRect);
             SDL_DestroyTexture(maxScoreTexture);
         }
-
+            if (player1ShieldActive && shieldTexture) {
+            SDL_Rect shieldRect = {player.x-5,player.y-5,50,50};
+            SDL_RenderCopy(renderer, shieldTexture, NULL, &shieldRect);
+        }
             }
             else
             {
@@ -755,15 +767,16 @@ void Game::updateTrapsAndStun(double dt) {
                 }
                     else if(player2.health==1)
                         SDL_RenderCopy(renderer,health3Texture,nullptr,&healthPlayer2Rect);
-                        if (player1Stunned) {
-             SDL_Rect stunRect = {player.x,player.y,40,20}; // Vẽ tại vị trí player
-             // Có thể điều chỉnh vị trí/kích thước hiệu ứng
-             SDL_RenderCopy(renderer, trapTexture, NULL, &stunRect);
-        }
+
         if (player2Stunned) {
                  SDL_Rect stunRect = {player2.x,player2.y,40,20};
                  SDL_RenderCopy(renderer, trapTexture, NULL, &stunRect);
              }
+            }
+            if (player1Stunned) {
+             SDL_Rect stunRect = {player.x,player.y,40,20}; // Vẽ tại vị trí player
+             // Có thể điều chỉnh vị trí/kích thước hiệu ứng
+             SDL_RenderCopy(renderer, trapTexture, NULL, &stunRect);
             }
             SDL_Rect pauseRect={760,0,40,40};
             SDL_RenderCopy(renderer,pauseTexture,NULL,&pauseRect);
@@ -817,6 +830,14 @@ void Game::updateTrapsAndStun(double dt) {
                         {
                         enemy.active = false;
                         score++;
+                        if (rand() % 100 < 20) { // 20% cơ hội
+                                if (!player1ShieldActive) { // Chỉ kích hoạt nếu chưa có
+                                    player1ShieldActive = true;
+                                    player1ShieldTimer = SHIELD_DURATION;
+                                    std::cout << "Shield Activated!" << std::endl; // Debug
+                                    Mix_PlayChannel(-1, healthSound, 0);
+                                }
+                            }
                         }
                     }
                 }
@@ -834,6 +855,15 @@ void Game::updateTrapsAndStun(double dt) {
             for (auto &enemy : enemies) {
                 for (auto &bullet : enemy.bullets) {
                     if (SDL_HasIntersection(&bullet.rect, &player.rect)) {
+                            if (player1ShieldActive) {
+                            // Giáp đỡ đạn
+                            explosions.push_back(Explosion(bullet.x, bullet.y)); // Nổ tại điểm chạm giáp
+                             Mix_PlayChannel(-1, explosionSound, 0); // Hoặc âm thanh giáp vỡ
+                            bullet.active = false;      // Hủy viên đạn
+                            player1ShieldActive = false; // Giáp bị phá hủy
+                            player1ShieldTimer = 0.0;   // Reset timer
+                            std::cout << "Shield Blocked!" << std::endl; // Debug
+                        } else {
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(player.x, player.y));
                         Mix_PlayMusic(loseSound,0);
@@ -848,7 +878,7 @@ void Game::updateTrapsAndStun(double dt) {
                         level = 1;
                         spawnEnemies();
                         SaveGame(*this,"save.txt");
-                        return;
+                        return;}
                     }
                 }
             }
@@ -919,7 +949,6 @@ void Game::updateTrapsAndStun(double dt) {
                     }
             }
             updateHealthPack(0.015);
-            updateTrapsAndStun(0.015);
                 }
             player.updateBullets();
 
@@ -939,7 +968,15 @@ void Game::updateTrapsAndStun(double dt) {
                     }
                 }
             }
-
+            if (player1ShieldActive) {
+            player1ShieldTimer -= 0.015; // Giả sử dt ~ 0.015
+            if (player1ShieldTimer <= 0.0) {
+                player1ShieldActive = false;
+                player1ShieldTimer = 0.0;
+                std::cout << "Shield Expired." << std::endl; // Debug
+            }
+        }
+            updateTrapsAndStun(0.015);
             for (auto &explosion : explosions) {
                 explosion.update();
             }
@@ -985,6 +1022,7 @@ void Game::updateTrapsAndStun(double dt) {
     SDL_DestroyTexture(pauseTexture);
     SDL_DestroyTexture(trapTexture);
     SDL_DestroyTexture(healthPackTexture);
+    SDL_DestroyTexture(shieldTexture);
     // Giải phóng các texture nổ
     for (int i = 0; i < 4; ++i) {
         SDL_DestroyTexture(explosionTextures[i]);

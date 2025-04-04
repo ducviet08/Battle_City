@@ -35,6 +35,7 @@ public:
     bool player2Stunned = false;            // Player 2 có đang bị choáng không?
     double player2StunTimer = 0.0;          // Thời gian choáng còn lại của Player 2
     const double STUN_DURATION = 3.0;
+    const double SHIELD_DURATION = 5.0;
     Game();
     ~Game();
     void run();

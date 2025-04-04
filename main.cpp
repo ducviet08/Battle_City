@@ -72,7 +72,9 @@ SDL_Texture* health2Texture=nullptr;
 SDL_Texture* health3Texture=nullptr;
 Mix_Chunk *healthSound=nullptr;
 Mix_Chunk *trapSound=nullptr;
-
+SDL_Texture *shieldTexture=nullptr; // Texture cho giáp
+bool player1ShieldActive=false;   // Trạng thái giáp
+double player1ShieldTimer=0;  // Thời gian còn lại của giáp
 vector<int> wall1x = {12, 0, 4, 4, 8, 8, 8, 8, 8, 12, 12, 16, 20, 20, 20, 20, 24, 24, 24, 24, 28, 32, 32, 32, 32, 36, 36, 36, 36, 36, 40, 40, 44, 52, 52, 52, 52, 52, 52, 52, 52, 56, 56, 58, 60, 60, 62, 64, 64, 66, 68, 68, 72, 72, 72, 72, 72, 72, 72, 72};
 vector<int> wall1y = {16, 12, 8, 16, 12, 20, 28, 32, 40, 28, 40, 40, 40, 36, 32, 28, 12, 16, 20, 24, 12, 12, 24, 36, 40, 12, 24, 36, 16, 20, 44, 48, 44, 4, 8, 12, 16, 20, 28, 32, 36, 38, 4, 8, 12, 38, 16, 12, 38, 8, 4, 38, 4, 8, 12, 16, 20, 28, 32, 36};
 vector<int> wall2x = {0, 4, 8, 12, 16, 16, 28, 28, 32, 44};
