@@ -848,15 +848,8 @@ void Game::updateTrapsAndStun(double dt) {
             for (auto &enemy : enemies) {
                 for (auto &bullet : enemy.bullets) {
                     if (SDL_HasIntersection(&bullet.rect, &player.rect)) {
-                            if (player1ShieldActive) {
-                            // Giáp đỡ đạn
-                            explosions.push_back(Explosion(bullet.x, bullet.y)); // Nổ tại điểm chạm giáp
-                             Mix_PlayChannel(-1, explosionSound, 0); // Hoặc âm thanh giáp vỡ
-                            bullet.active = false;      // Hủy viên đạn
-                            player1ShieldActive = false; // Giáp bị phá hủy
-                            player1ShieldTimer = 0.0;   // Reset timer
-                            std::cout << "Shield Blocked!" << std::endl; // Debug
-                        } else {
+                            if (!player1ShieldActive) {
+
                         // Tạo hiệu ứng nổ tại vị trí va chạm
                         explosions.push_back(Explosion(player.x, player.y));
                         Mix_PlayMusic(loseSound,0);
@@ -872,9 +865,22 @@ void Game::updateTrapsAndStun(double dt) {
                         spawnEnemies();
                         SaveGame(*this,"save.txt");
                         return;}
+                        else {
+                            explosions.push_back(Explosion(player.x, player.y));
+                        Mix_PlayMusic(loseSound,0);
+                         bullet.active = false;
+                        }
                     }
                 }
             }
+             for (auto &enemy : enemies)
+                if(player1ShieldActive&&SDL_HasIntersection(&enemy.rect, &player.rect))
+             {
+                 score++;
+                 enemy.active=false;
+                 Mix_PlayChannel(-1, explosionSound, 0);
+                 explosions.push_back(Explosion(player.x, player.y));
+             }
               if(timee>=60){
                         gameOver = true;
                         gameWon = true;
