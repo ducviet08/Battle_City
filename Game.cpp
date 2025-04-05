@@ -369,6 +369,8 @@ Game::Game() {
                    player2= PlayerTank((800 / 40 - 1) / 2 * 40, 0);
                    player.health=3;
                    player2.health=3;
+                   generateWalls();
+                   healthPackActive = false;
                    }
             }
         }
@@ -925,6 +927,8 @@ void Game::updateTrapsAndStun(double dt) {
                             gameOver=true;
                             gamePlayer1=false;
                             Mix_PlayMusic( winSound, 0);
+                            healthPackActive=0;
+
                         }
                         bullet.active = false;
                     }
@@ -940,6 +944,7 @@ void Game::updateTrapsAndStun(double dt) {
                             gameOver=true;
                             gamePlayer1=true;
                             Mix_PlayMusic( winSound, 0);
+                            healthPackActive=0;
                         }
                         bullet.active = false;
                     }

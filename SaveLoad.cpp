@@ -81,7 +81,8 @@ bool LoadGame(Game& game, const std::string& filename) {
     // Load player position
     getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> player.x; ss.clear();
     getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> player.y; ss.clear();
-
+    player.rect.x=player.x;
+    player.rect.y=player.y;
     // Load wall states
     size_t numWalls;
     getline(file, line); ss.str(line.substr(line.find(":") + 2)); ss >> numWalls; ss.clear();
@@ -107,7 +108,7 @@ bool LoadGame(Game& game, const std::string& filename) {
         int x, y,z;
         getline(file, line);
         ss.str(line);
-        ss >> active >> x >> y>>z;
+        ss >> active >> x >> y>> z;
         ss.clear();
 
         if (active) {
