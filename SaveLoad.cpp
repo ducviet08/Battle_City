@@ -44,7 +44,7 @@ bool SaveGame(const Game& game, const std::string& filename) {
     // Save enemy states and positions
     file << "Enemies: " << enemies.size() << std::endl;
     for (const auto& enemy : enemies) {
-        file << enemy.active << " " << enemy.x << " " << enemy.y << std::endl;
+        file << enemy.active << " " << enemy.x << " " << enemy.y <<" "<<enemy.health <<std::endl;
     }
 
     file.close();
@@ -104,14 +104,14 @@ bool LoadGame(Game& game, const std::string& filename) {
     enemies.clear();
     for (size_t i = 0; i < numEnemies; ++i) {
         bool active;
-        int x, y;
+        int x, y,z;
         getline(file, line);
         ss.str(line);
-        ss >> active >> x >> y;
+        ss >> active >> x >> y>>z;
         ss.clear();
 
         if (active) {
-            EnemyTank enemy(x, y);
+            EnemyTank enemy(x, y,z);
             enemy.active = true;
             enemies.push_back(enemy);
         }

@@ -317,9 +317,11 @@ Game::Game() {
                     if (mouseX >= playAgainRect.x && mouseX <= playAgainRect.x + playAgainRect.w &&
                         mouseY >= playAgainRect.y && mouseY <= playAgainRect.y + playAgainRect.h) {
                         // Reset game state
+
                         gameOver = false; // Đặt lại trạng thái gameOver
                         inMenu = true;
                         game2player=false;
+                        //level = 1;
                     }
                 }
                 return; // Không xử lý các sự kiện khác khi trò chơi kết thúc
@@ -350,14 +352,9 @@ Game::Game() {
                  if (mouseX >= continueButtonRect.x && mouseX <= continueButtonRect.x + continueButtonRect.w &&
                 mouseY >= continueButtonRect.y && mouseY <= continueButtonRect.y + continueButtonRect.h) {
                      // Attempt to load the game
-                    if (LoadGame(*this, "save.txt")) {
-                        // If the game loads successfully, set inMenu to false
+                        LoadGame(*this, "save.txt");
                         inMenu = false;
-                       game2player=0;
-                    } else {
-                        // Handle the case where loading the game fails.  For example:
-                        cout << "No saved game found, starting a new game." << endl;
-                    }
+                        game2player=false;
                 }
 
                 // Kiểm tra xem chuột có nhấp vào nút Instructions không
@@ -992,9 +989,10 @@ void Game::updateTrapsAndStun(double dt) {
             Events();
             update();
             render();
-            SDL_Delay(15);
 
+            SDL_Delay(15);
             if(!inMenu&&!gameOver) timee+=0.015;
+
         }
 
     }
