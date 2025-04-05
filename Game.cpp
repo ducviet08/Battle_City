@@ -391,7 +391,7 @@ Game::Game() {
     // Di chuyển dựa trên trạng thái phím
     if (!inMenu && !gameOver) {
             if (!player1Stunned){
-            if (keystate[SDL_SCANCODE_UP]) {
+            if (keystate[SDL_SCANCODE_UP]) {//mã quét
                 player.dirX = 0;
                 player.dirY = -1;
                 player.move(0, -4, walls);
@@ -504,9 +504,7 @@ void Game::updateHealthPack(double dt) {
                 Mix_PlayChannel(-1,healthSound,0);
             player.health = std::min(3, player.health + 1); // Hồi máu, tối đa 3
             healthPackActive = false;                       // Biến mất
-            //healthPackSpawnTimer = 0.0;                     // Bắt đầu đếm lại từ đầu
             std::cout << "Player 1 collected health pack! Health: " << player.health << std::endl; // Debug
-            // Mix_PlayChannel(-1, healthPickupSound, 0); // Thêm âm thanh nếu có
             return; // Chỉ một người chơi có thể nhặt trong một frame
         }
 
@@ -515,13 +513,10 @@ void Game::updateHealthPack(double dt) {
             Mix_PlayChannel(-1,healthSound,0);
             player2.health = std::min(3, player2.health + 1); // Hồi máu, tối đa 3
             healthPackActive = false;                        // Biến mất
-            //healthPackSpawnTimer = 0.0;                      // Bắt đầu đếm lại từ đầu
             std::cout << "Player 2 collected health pack! Health: " << player2.health << std::endl; // Debug
-            // Mix_PlayChannel(-1, healthPickupSound, 0); // Thêm âm thanh nếu có
         }
     }
 }
-// Game.cpp
 
 void Game::spawnTrap() {
     if (trapActive) return; // Chỉ spawn nếu chưa có bẫy nào đang active
@@ -578,7 +573,6 @@ void Game::applyStun(PlayerTank& targetPlayer, bool& stunFlag, double& stunTimer
 // Game.cpp
 
 void Game::updateTrapsAndStun(double dt) {
-    //if (!game2player) return; // Chỉ chạy ở chế độ 2 người chơi
 
     // --- Xử lý Spawn Bẫy ---
     if (!trapActive) {
@@ -599,7 +593,6 @@ void Game::updateTrapsAndStun(double dt) {
             trapActive = false; // Bẫy đã bị kích hoạt và biến mất
             trapSpawnTimer = 0.0; // Bắt đầu đếm lại ngay cho bẫy tiếp theo
              std::cout << "Player 1 triggered trap!" << std::endl; // Debug
-            // Không return, cả 2 có thể bị stun cùng lúc nếu đứng chồng lên nhau
         }
 
         // Kiểm tra va chạm với người chơi 2 (nếu chưa bị stun và bẫy VẪN còn active)
