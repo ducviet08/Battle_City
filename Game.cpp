@@ -381,7 +381,7 @@ Game::Game() {
                     SDL_GetMouseState(&mouseX, &mouseY);
                     if (mouseX >= pauseButtonRect.x && mouseX <= pauseButtonRect.x + pauseButtonRect.w &&
                         mouseY >= pauseButtonRect.y && mouseY <= pauseButtonRect.y + pauseButtonRect.h) {
-                            SaveGame(*this, "save.txt");
+                           if(!game2player) SaveGame(*this, "save.txt");
                     inMenu = true; // Trở về menu
                 }
             }

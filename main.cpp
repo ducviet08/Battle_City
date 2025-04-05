@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <algorithm>
-#include <cmath>
+#include <cmath>//arctan(tính góc)
 #include <ctime>
 #include <utility>
 #include <SDL_ttf.h>
