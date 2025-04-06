@@ -9,7 +9,7 @@ EnemyTank::EnemyTank(int startX, int startY,int Health) {
     shootDelay = 5;  // Delay for shooting
     x = startX;
     y = startY;
-    rect = {x, y, 40, 40};
+    rect = {x, y, 32, 32};
     dirX = 0;
     dirY = 1;
     active = true;
@@ -20,7 +20,7 @@ EnemyTank::EnemyTank(int startX, int startY) {
     shootDelay = 5;  // Delay for shooting
     x = startX;
     y = startY;
-    rect = {x, y, 40, 40};
+    rect = {x, y, 32, 32};
     dirX = 0;
     dirY = 1;
     active = true;
@@ -60,7 +60,7 @@ void EnemyTank::move(const std::vector<Wall> &walls,int a) {
 void EnemyTank::shoot(int a) {
     if (--shootDelay > 0) return;
     shootDelay = 5;
-    bullets.push_back(Bullet(x + 40 / 2 - 5, y + 40 / 2 - 5,
+    bullets.push_back(Bullet(x + 40 / 2 - 9, y + 40 / 2 - 5,
                                this->dirX*(1+a), this->dirY*(1+a)));
 }
 

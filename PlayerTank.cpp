@@ -8,7 +8,7 @@ PlayerTank::PlayerTank(int startX, int startY) {
     bool protect=false;
     x = startX;
     y = startY;
-    rect = {x, y, 40, 40};
+    rect = {x, y, 32, 32};
     dirX = 0;
     dirY = -1; // Default direction up
     cooldown = 0;
@@ -19,11 +19,11 @@ void PlayerTank::move(int dx, int dy, const std::vector<Wall> &walls) {
     int newY = y + dy;
     this->dirX = dx;
     this->dirY = dy;
-    SDL_Rect newRect = {newX, newY, 40, 40};
+    SDL_Rect newRect = {newX, newY, 32, 32};
     for (int i = 0; i < walls.size(); i++) // Corrected loop counter type
         if (walls[i].active && SDL_HasIntersection(&newRect, &walls[i].rect))
             return;
-    if (newX >= 0 && newY >= 0 && newX <= 800 - 2 * 40 && newY <= 600 - 40) {
+    if (newX >= 0 && newY >= 0 && newX <= 800 - 2 * 40+8 && newY <= 600 - 40+8) {
         x = newX;
         y = newY;
         rect.x = x;
@@ -35,7 +35,7 @@ void PlayerTank::shoot() {
     extern Mix_Chunk *fireSound;
     if(cooldown<=0)
     {
-    bullets.push_back(Bullet(x + 40 / 2 - 5, y + 40 / 2 - 5,
+    bullets.push_back(Bullet(x + 40 / 2 - 9, y + 40 / 2 - 5,
                                this->dirX*2, this->dirY*2));
     cooldown=700;
     Mix_PlayChannel(-1,fireSound, 0);

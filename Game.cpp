@@ -723,7 +723,7 @@ void Game::updateTrapsAndStun(double dt) {
             SDL_DestroyTexture(maxScoreTexture);
         }
             if (player1ShieldActive && shieldTexture) {
-            SDL_Rect shieldRect = {player.x-5,player.y-5,50,50};
+            SDL_Rect shieldRect = {player.x-9,player.y-9,50,50};
             SDL_RenderCopy(renderer, shieldTexture, NULL, &shieldRect);
         }
             }
@@ -994,7 +994,7 @@ void Game::updateTrapsAndStun(double dt) {
             Events();
             update();
             render();
-
+            //cout<<player.x<<" "<<player.y<<'\n';
             SDL_Delay(15);
             if(!inMenu&&!gameOver) timee+=0.015;
 
